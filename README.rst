@@ -1,5 +1,9 @@
+===========================
 README for connexions-setup
----------------------------
+===========================
+
+Installation
+------------
 
 1. Install virtualenv
 
@@ -32,3 +36,22 @@ README for connexions-setup
 5. Have a look at what tasks are available:
 
    ``./bin/fab -l``
+
+Example Usage
+-------------
+
+1. Create a VM or have a server with Ubuntu 13.04 (which we will call raring).
+
+2. (Optional) Set up your ssh key and hostname in your ssh config.
+
+3. Set up oer.exports on raring:
+
+   ``./bin/fab -H raring export_setup``
+
+4. Run the tests in oer.exports on raring:
+
+   ``./bin/fab -H raring export_test``
+
+5. Try generating a pdf with oer.exports on raring:
+
+   ``./bin/fab -H raring export_generate_pdf``
