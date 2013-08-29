@@ -111,7 +111,10 @@ def export_setup():
     """Set up oer.exports
     """
     _setup()
-    sudo('apt-get install --yes python-virtualenv libxslt1-dev libxml2-dev librsvg2-bin otf-stix imagemagick inkscape ruby libxml2-utils zip openjdk-7-jre-headless docbook-xsl-ns zlib1g-dev')
+    sudo('apt-get install --yes python-virtualenv libxslt1-dev libxml2-dev zlib1g-dev '
+            'librsvg2-bin otf-stix imagemagick inkscape ruby libxml2-utils zip '
+            'openjdk-7-jre-headless docbook-xsl-ns')
+    sudo('apt-get install --yes xsltproc') # used for generating epub
     if not fabric.contrib.files.exists('oer.exports'):
         run('git clone https://github.com/Connexions/oer.exports.git')
     with cd('oer.exports'):
@@ -140,6 +143,17 @@ def export_generate_pdf():
     get('oer.exports/result.pdf', '/tmp/result.pdf')
     local('evince /tmp/result.pdf')
     local('rm /tmp/result.pdf')
+
+def export_generate_epub():
+    """Generate an EPUB in oer.exports
+    """
+    with cd('oer.exports'):
+        with prefix('source bin/activate'):
+            #run('sh ./scripts/module2epub.sh "Connexions" ./test-ccap ./test-ccap.epub "col12345" ./xsl/dbk2epub.xsl ./static/content.css')
+            run('python content2epub.py -c ./static/content.css -e ./xsl/dbk2epub.xsl -t "module" -o ./m123.epub -i "m123" ./test-ccap/m-section/')
+            #run('python content2epub.py -c ./static/content.css -e ./xsl/dbk2epub.xsl -t "collection" -o ./test-ccap.epub ./test-ccap/')
+    get('oer.exports/m123.epub', '/tmp/m123.epub')
+    #get('oer.exports/test-ccap.epub', '/tmp/test-ccap.epub')
 
 def user_setup():
     """Set up cnx-user
