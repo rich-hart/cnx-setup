@@ -7,7 +7,6 @@ def _setup():
     """Install packages necessary for the connexion projects
     """
     sudo('apt-get install --yes git python-setuptools python-dev')
-    _install_postgresql()
 
 def _install_postgresql():
     # taken from https://wiki.postgresql.org/wiki/Apt and https://wiki.postgresql.org/wiki/Apt/FAQ#I_want_to_try_the_beta_version_of_the_next_PostgreSQL_release
@@ -19,17 +18,24 @@ def _install_postgresql():
         fabric.contrib.files.sed('/etc/postgresql/9.3/main/pg_hba.conf', '^local\s*all\s*all\s*peer\s*$', 'local all all md5', use_sudo=True)
         sudo('/etc/init.d/postgresql restart')
 
+def _postgres_user_exists(username):
+    return '1' in sudo('psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname=\'%s\'"' % username, user='postgres')
+
+def _postgres_db_exists(dbname):
+    return dbname in sudo('psql -l', user='postgres')
+
 def archive_setup():
     """Set up cnx-archive
     """
     _setup()
+    _install_postgresql()
     if not fabric.contrib.files.exists('cnx-archive'):
         run('git clone https://github.com/Connexions/cnx-archive.git')
-    if '1' not in sudo('psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname=\'cnxarchive\'"', user='postgres'):
+    if not _postgres_user_exists('cnxarchive'):
         print 'Please type in "cnxarchive" as the password'
         sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
 
-    if 'cnxarchive' in sudo('psql -l', user='postgres'):
+    if _postgres_db_exists('cnxarchive'):
         sudo('dropdb cnxarchive', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive', user='postgres')
     sudo('createlang plpythonu cnxarchive', user='postgres')
@@ -63,7 +69,7 @@ def archive_test():
 def _install_nodejs():
     # the nodejs package in raring is too old for grunt-cli,
     # so manually installing it here
-    if run('which node'):
+    if run('which node', warn_only=True):
         return
     sudo('apt-get install --yes make g++')
     run('wget http://nodejs.org/dist/v0.10.17/node-v0.10.17.tar.gz')
@@ -100,6 +106,70 @@ def webview_run():
 def webview_test():
     with cd('webview'):
         run('npm test')
+
+def export_setup():
+    """Set up oer.exports
+    """
+    _setup()
+    sudo('apt-get install --yes python-virtualenv libxslt1-dev libxml2-dev librsvg2-bin otf-stix imagemagick inkscape ruby libxml2-utils zip openjdk-7-jre-headless docbook-xsl-ns zlib1g-dev')
+    if not fabric.contrib.files.exists('oer.exports'):
+        run('git clone https://github.com/Connexions/oer.exports.git')
+    with cd('oer.exports'):
+        run('virtualenv .')
+        with prefix('source bin/activate'):
+            run('easy_install lxml argparse pillow')
+    if not run('which prince', warn_only=True):
+        run('wget http://www.princexml.com/download/prince_9.0-2_ubuntu12.04_amd64.deb')
+        sudo('apt-get install libtiff4 libgif4') # install dependencies of princexml
+        sudo('dpkg -i prince_9.0-2_ubuntu12.04_amd64.deb')
+        run('rm prince_9.0-2_ubuntu12.04_amd64.deb')
+
+def export_test():
+    """Run tests in oer.exports
+    """
+    with cd('oer.exports'):
+        with prefix('source bin/activate'):
+            run('python -m unittest discover')
+
+def export_generate_pdf():
+    """Generate a PDF in oer.exports
+    """
+    with cd('oer.exports'):
+        with prefix('source bin/activate'):
+            run('python collectiondbk2pdf.py -p %s -d ./test-ccap -s ccap-physics ./result.pdf' % run('which prince'))
+    get('oer.exports/result.pdf', '/tmp/result.pdf')
+    local('evince /tmp/result.pdf')
+    local('rm /tmp/result.pdf')
+
+def user_setup():
+    """Set up cnx-user
+    """
+    _setup()
+    _install_postgresql()
+    if not _postgres_user_exists('cnxuser'):
+        print 'Please type in "cnxuser" as the password'
+        sudo('createuser --no-createdb --no-createrole --no-superuser --pwprompt cnxuser', user='postgres')
+    if _postgres_db_exists('cnxuser'):
+        sudo('dropdb cnxuser', user='postgres')
+    sudo('createdb -O cnxuser cnxuser', user='postgres')
+
+    if not fabric.contrib.files.exists('cnx-user'):
+        run('git clone https://github.com/Connexions/cnx-user.git')
+    with cd('cnx-user'):
+        sudo('python setup.py install')
+        run('initialize_cnx-user_db development.ini')
+
+def user_run():
+    """Run cnx-user
+    """
+    with cd('cnx-user'):
+        run('pserve development.ini')
+
+def user_test():
+    """Run tests for cnx-user
+    """
+    with cd('cnx-user'):
+        run('python -m unittest discover')
 
 def test():
     """A test task to see whether paramiko is broken
