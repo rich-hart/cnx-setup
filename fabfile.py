@@ -96,9 +96,12 @@ def webview_setup():
     _install_nodejs()
     sudo('apt-get install --yes npm')
     sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
-    sudo('npm install -g grunt-cli')
+    sudo('npm install -g grunt-cli bower')
+    # remove ~/tmp after a system npm install as ~/tmp is owned by root and
+    # cannot be written as the user in the next step
+    sudo('rm -rf ~/tmp')
     with cd('webview'):
-        sudo('npm install')
+        run('npm install')
     _configure_webview_nginx()
 
 def webview_run():
@@ -113,6 +116,15 @@ def webview_test():
     """
     with cd('webview'):
         run('npm test')
+
+def webview_update():
+    """Update webview after a git pull
+    """
+    sudo('rm -rf ~/tmp')
+    with cd('webview'):
+        run('npm install')
+        run('npm update')
+        run('bower update')
 
 def export_setup():
     """Set up oer.exports
