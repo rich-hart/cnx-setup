@@ -95,6 +95,7 @@ def webview_setup():
         run('git clone https://github.com/Connexions/webview.git')
     _install_nodejs()
     sudo('apt-get install --yes npm')
+    sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
     sudo('npm install -g grunt-cli')
     with cd('webview'):
         sudo('npm install')
@@ -155,11 +156,11 @@ def export_generate_epub():
     """
     with cd('oer.exports'):
         with prefix('source bin/activate'):
-            #run('sh ./scripts/module2epub.sh "Connexions" ./test-ccap ./test-ccap.epub "col12345" ./xsl/dbk2epub.xsl ./static/content.css')
+            run('sh ./scripts/module2epub.sh "Connexions" ./test-ccap ./test-ccap.epub "col12345" ./xsl/dbk2epub.xsl ./static/content.css')
             run('python content2epub.py -c ./static/content.css -e ./xsl/dbk2epub.xsl -t "module" -o ./m123.epub -i "m123" ./test-ccap/m-section/')
-            #run('python content2epub.py -c ./static/content.css -e ./xsl/dbk2epub.xsl -t "collection" -o ./test-ccap.epub ./test-ccap/')
+            run('python content2epub.py -c ./static/content.css -e ./xsl/dbk2epub.xsl -t "collection" -o ./test-ccap.epub ./test-ccap/')
     get('oer.exports/m123.epub', '/tmp/m123.epub')
-    #get('oer.exports/test-ccap.epub', '/tmp/test-ccap.epub')
+    get('oer.exports/test-ccap.epub', '/tmp/test-ccap.epub')
 
 def user_setup():
     """Set up cnx-user
@@ -210,6 +211,7 @@ def repo_setup():
     if not fabric.contrib.files.exists('rhaptos2.repo'):
         run('mkdir rhaptos2.repo')
         run('wget https://raw.github.com/Connexions/rhaptos2.repo/master/quickdownload.sh')
+        sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
         run('bash quickdownload.sh rhaptos2.repo')
         run('rm quickdownload.sh')
 
