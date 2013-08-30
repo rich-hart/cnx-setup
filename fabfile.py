@@ -185,6 +185,49 @@ def user_test():
     with cd('cnx-user'):
         run('python -m unittest discover')
 
+def repo_setup():
+    """Set up rhaptos2.repo
+    """
+    _setup()
+    _install_postgresql()
+
+    if not _postgres_user_exists('rhaptos2repo'):
+        print 'Please type in "rhaptos2repo" as the password'
+        sudo('createuser --pwprompt --superuser rhaptos2repo', user='postgres')
+    if _postgres_db_exists('rhaptos2repo'):
+        sudo('dropdb rhaptos2repo', user='postgres')
+    if _postgres_db_exists('rhaptos2users'):
+        sudo('dropdb rhaptos2users', user='postgres')
+    sudo('createdb -O rhaptos2repo rhaptos2repo', user='postgres')
+    sudo('createdb -O rhaptos2repo rhaptos2users', user='postgres')
+
+    if not fabric.contrib.files.exists('rhaptos2.repo'):
+        run('mkdir rhaptos2.repo')
+        run('wget https://raw.github.com/Connexions/rhaptos2.repo/master/quickdownload.sh')
+        run('bash quickdownload.sh rhaptos2.repo')
+        run('rm quickdownload.sh')
+
+def repo_run_user_server():
+    """Run rhaptos2.repo user server
+    """
+    with cd('rhaptos2.repo'):
+        with prefix('source venvs/vrepo/bin/activate'):
+            run('cd src/rhaptos2.user && python rhaptos2/user/run.py --config local.ini --port 8081')
+
+def repo_run_content_repo():
+    """Run rhaptos2.repo content repository instance
+    """
+    if not fabric.contrib.files.exists('/opt'):
+        sudo('mkdir /opt')
+    if not fabric.contrib.files.exists('/opt/cnx'):
+        sudo('mkdir /opt/cnx')
+    if not fabric.contrib.files.exists('/opt/cnx/log'):
+        sudo('mkdir /opt/cnx/log')
+    sudo('chown %s:%s /opt/cnx/log' % (env.user, env.user))
+    with cd('rhaptos2.repo/venvs/vrepo'):
+        with prefix('source bin/activate'):
+            run('rhaptos2repo-run --debug --config=develop.ini')
+
 def test():
     """A test task to see whether paramiko is broken
     """
