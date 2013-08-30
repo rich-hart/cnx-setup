@@ -88,6 +88,8 @@ def _configure_webview_nginx():
     webview_run()
 
 def webview_setup():
+    """Set up webview
+    """
     _setup()
     if not fabric.contrib.files.exists('webview'):
         run('git clone https://github.com/Connexions/webview.git')
@@ -99,11 +101,15 @@ def webview_setup():
     _configure_webview_nginx()
 
 def webview_run():
+    """Run webview
+    """
     sudo('rm /etc/nginx/sites-enabled/*')
     sudo('ln -s /etc/nginx/sites-available/webview /etc/nginx/sites-enabled/webview')
     sudo('/etc/init.d/nginx restart')
 
 def webview_test():
+    """Run tests in webview
+    """
     with cd('webview'):
         run('npm test')
 
