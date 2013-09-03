@@ -188,8 +188,18 @@ def user_setup():
 
     if not fabric.contrib.files.exists('cnx-user'):
         run('git clone https://github.com/Connexions/cnx-user.git')
+    if not fabric.contrib.files.exists('velruse'):
+        run('git clone -b cnx-master https://github.com/pumazi/velruse.git')
+        with cd('velruse'):
+            sudo('python setup.py install')
     with cd('cnx-user'):
+        # change velruse to use 1.0.3 which is the version from pumazmi/veruse
+        fabric.contrib.files.sed('setup.py', 'velruse', 'velruse==1.0.3')
         sudo('python setup.py install')
+        # httplib2 top_level.txt is not readable by the user for some reason
+        # (while other top_level.txt are).  This causes initialize_cnx-user_db
+        # to fail with IOError permission denied
+        sudo('chmod 644 /usr/local/lib/python2.7/dist-packages/httplib2-0.8-py2.7.egg/EGG-INFO/top_level.txt')
         run('initialize_cnx-user_db development.ini')
 
 def user_run():
