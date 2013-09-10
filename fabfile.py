@@ -29,6 +29,7 @@ def archive_setup():
     """
     _setup()
     _install_postgresql()
+    query_setup()
     if not fabric.contrib.files.exists('cnx-archive'):
         run('git clone https://github.com/Connexions/cnx-archive.git')
     if not _postgres_user_exists('cnxarchive'):
