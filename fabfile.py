@@ -51,9 +51,15 @@ def archive_run():
     with cd('cnx-archive'):
         run('paster serve development.ini')
 
-def archive_test():
+def archive_test(test_case=None):
     """Test cnx-archive
     """
+    if test_case:
+        with cd('cnx-archive'):
+            with shell_env(TESTING_CONFIG='testing.ini'):
+                run('python -m unittest %s' % test_case)
+        return
+
     if 'cnxarchive-testing' in sudo('psql -l', user='postgres'):
         sudo('dropdb cnxarchive-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
