@@ -1,11 +1,13 @@
 from fabric.api import *
 import fabric.contrib.files
+from ilogue import fexpect
 
 env.use_ssh_config = True
 
 def _setup():
     """Install packages necessary for the connexion projects
     """
+    sudo('apt-get update')
     sudo('apt-get install --yes git python-setuptools python-dev')
 
 def _install_postgresql():
@@ -32,9 +34,13 @@ def archive_setup():
     query_setup()
     if not fabric.contrib.files.exists('cnx-archive'):
         run('git clone https://github.com/Connexions/cnx-archive.git')
+
     if not _postgres_user_exists('cnxarchive'):
-        print 'Please type in "cnxarchive" as the password'
-        sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
+        prompts = []
+        prompts += fexpect.expect('Enter password for new role:', 'cnxarchive')
+        prompts += fexpect.expect('Enter it again:', 'cnxarchive')
+        with fexpect.expecting(prompts):
+            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
 
     if _postgres_db_exists('cnxarchive'):
         sudo('dropdb cnxarchive', user='postgres')
@@ -43,8 +49,8 @@ def archive_setup():
     with cd('cnx-archive'):
         sudo('python setup.py install')
         run('initialize_cnx-archive_db development.ini')
-        print 'Please type in "cnxarchive" as the password'
-        run('psql -U cnxarchive cnxarchive -f example-data.sql')
+        with fexpect.expecting(fexpect.expect('Password for user cnxarchive:', 'cnxarchive')):
+            fexpect.run('psql -U cnxarchive cnxarchive -f example-data.sql')
 
 def archive_run():
     """Run cnx-archive
@@ -77,7 +83,7 @@ def query_setup():
     """Set up cnx-query-grammar
     """
     if not fabric.contrib.files.exists('cnx-query-grammar'):
-        run('git clone https://github.com/connexions/cnx-query-grammar')
+        run('git clone https://github.com/Connexions/cnx-query-grammar.git')
     with cd('cnx-query-grammar'):
         sudo('python setup.py install')
 
@@ -206,8 +212,11 @@ def user_setup():
     _setup()
     _install_postgresql()
     if not _postgres_user_exists('cnxuser'):
-        print 'Please type in "cnxuser" as the password'
-        sudo('createuser --no-createdb --no-createrole --no-superuser --pwprompt cnxuser', user='postgres')
+        prompts = []
+        prompts += fexpect.expect('Enter password for new role:', 'cnxuser')
+        prompts += fexpect.expect('Enter it again:', 'cnxuser')
+        with fexpect.expecting(prompts):
+            fexpect.sudo('createuser --no-createdb --no-createrole --no-superuser --pwprompt cnxuser', user='postgres')
     if _postgres_db_exists('cnxuser'):
         sudo('dropdb cnxuser', user='postgres')
     sudo('createdb -O cnxuser cnxuser', user='postgres')
@@ -245,10 +254,14 @@ def repo_setup():
     """
     _setup()
     _install_postgresql()
+    sudo('apt-get install --yes npm')
 
     if not _postgres_user_exists('rhaptos2repo'):
-        print 'Please type in "rhaptos2repo" as the password'
-        sudo('createuser --pwprompt --superuser rhaptos2repo', user='postgres')
+        prompts = []
+        prompts += fexpect.expect('Enter password for new role:', 'rhaptos2repo')
+        prompts += fexpect.expect('Enter it again:', 'rhaptos2repo')
+        with fexpect.expecting(prompts):
+            fexpect.sudo('createuser --pwprompt --superuser rhaptos2repo', user='postgres')
     if _postgres_db_exists('rhaptos2repo'):
         sudo('dropdb rhaptos2repo', user='postgres')
     if _postgres_db_exists('rhaptos2users'):

@@ -19,7 +19,7 @@ Installation
 
 3. Install fabric
 
-   ``./bin/pip install fabric``
+   ``./bin/pip install fabric fexpect``
 
 4. Check whether paramiko is broken:
 
