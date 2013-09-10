@@ -72,6 +72,25 @@ def archive_test(test_case=None):
         with shell_env(TESTING_CONFIG='testing.ini'):
             run('python -m unittest discover')
 
+def query_setup():
+    """Set up cnx-query-grammar
+    """
+    if not fabric.contrib.files.exists('cnx-query-grammar'):
+        run('git clone https://github.com/connexions/cnx-query-grammar')
+    with cd('cnx-query-grammar'):
+        sudo('python setup.py install')
+
+def query_run(args):
+    """Run the cnx-query-grammar script
+    """
+    run('query_parser %s' % args)
+
+def query_test():
+    """Run tests in cnx-query-grammar
+    """
+    with cd('cnx-query-grammar'):
+        run('python -m unittest discover')
+
 def _install_nodejs():
     # the nodejs package in raring is too old for grunt-cli,
     # so manually installing it here
