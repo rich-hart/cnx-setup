@@ -7,7 +7,7 @@ Installation
 
 1. Install virtualenv
 
-   ``sudo apt-get install virtualenv``
+   ``sudo apt-get install python-virtualenv``
 
    OR
 
