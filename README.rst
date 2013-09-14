@@ -17,9 +17,9 @@ Installation
 
    ``virtualenv .``
 
-3. Install fabric
+3. Install fabric, fexpect and (optional) redis
 
-   ``./bin/pip install fabric fexpect``
+   ``./bin/pip install fabric fexpect redis``
 
 4. Check whether paramiko is broken:
 

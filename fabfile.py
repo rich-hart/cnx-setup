@@ -26,14 +26,21 @@ def _postgres_user_exists(username):
 def _postgres_db_exists(dbname):
     return dbname in sudo('psql -l', user='postgres')
 
-def archive_setup():
+def archive_setup(clone_url=None, sha=None, force_clone=False):
     """Set up cnx-archive
     """
     _setup()
     _install_postgresql()
     query_setup()
+    if clone_url is None:
+        clone_url = 'https://github.com/Connexions/cnx-archive.git'
+    if force_clone:
+        sudo('rm -rf cnx-archive')
     if not fabric.contrib.files.exists('cnx-archive'):
-        run('git clone https://github.com/Connexions/cnx-archive.git')
+        run('git clone %s' % clone_url)
+        if sha is not None:
+            with cd('cnx-archive'):
+                run('git reset --hard %s' % sha)
 
     if not _postgres_user_exists('cnxarchive'):
         prompts = []
@@ -67,17 +74,13 @@ def archive_test(test_case=None):
                 run('python -m unittest %s' % test_case)
         return
 
-    if 'cnxarchive-testing' in sudo('psql -l', user='postgres'):
+    if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
         sudo('dropdb cnxarchive-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
-    # forward port 3333 to 5432 because testing.ini uses
-    # port 3333 but the default postgresql port is 5432
-    if not run('pgrep -f "3333:localhost:5432"', warn_only=True):
-        run('ssh -fNL 3333:localhost:5432 localhost')
     with cd('cnx-archive'):
         with shell_env(TESTING_CONFIG='testing.ini'):
-            run('python -m unittest discover')
+            return run('python -m unittest discover', warn_only=True)
 
 def query_setup():
     """Set up cnx-query-grammar
