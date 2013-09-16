@@ -42,25 +42,29 @@ def run(setup, server, vm_hostname, vm_name, vm_ip):
 
     pull_request = json.loads(s.blpop('build_queue')[1])
 
-    with start_vm(vm_hostname, vm_name, vm_ip) as vm_hostname:
-        print '%s setup' % setup
-        import fabfile
-        fabfile.env.host_string = vm_hostname
-        getattr(fabfile, '%s_setup' % setup)(
-                clone_url=pull_request['clone_url'],
-                sha=pull_request['sha'], force_clone=True)
+    try:
+        with start_vm(vm_hostname, vm_name, vm_ip) as vm_hostname:
+            print '%s setup' % setup
+            import fabfile
+            fabfile.env.host_string = vm_hostname
+            getattr(fabfile, '%s_setup' % setup)(
+                    clone_url=pull_request['clone_url'],
+                    sha=pull_request['sha'], force_clone=True)
 
-        print '%s test' % setup
-        test_results = getattr(fabfile, '%s_test' % setup)()
-        test_results = test_results.splitlines()
-        test_results = 'Automated test results for %s: %s\n\n%s\n' % (
-                pull_request['sha'], test_results[-1], test_results[-3])
+            print '%s test' % setup
+            test_results = getattr(fabfile, '%s_test' % setup)()
+            test_results = test_results.splitlines()
+            test_results = 'Automated test results for %s: %s\n\n%s\n' % (
+                    pull_request['sha'], test_results[-1], test_results[-3])
 
-        print test_results
-        s.rpush('comment_queue', json.dumps({
-            'pull_request_id': pull_request['pull_request_id'],
-            'repo': pull_request['repo'],
-            'test_results': test_results}))
+            print test_results
+            s.rpush('comment_queue', json.dumps({
+                'pull_request_id': pull_request['pull_request_id'],
+                'repo': pull_request['repo'],
+                'test_results': test_results}))
+    except:
+        s.lpush('build_queue', json.dumps(pull_request))
+        raise
 
 def main():
     parser = argparse.ArgumentParser()
