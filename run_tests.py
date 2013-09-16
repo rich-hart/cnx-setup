@@ -53,9 +53,13 @@ def run(setup, server, vm_hostname, vm_name, vm_ip):
 
             print '%s test' % setup
             test_results = getattr(fabfile, '%s_test' % setup)()
+            errors = re.findall(r'ERROR: [^\n]*', test_results)
+            errors = ''.join([' * %s\n' % i for i in errors])
+
             test_results = test_results.splitlines()
-            test_results = 'Automated test results for %s: %s\n\n%s\n' % (
-                    pull_request['sha'], test_results[-1], test_results[-3])
+            test_results = 'Automated test results for %s: %s\n%s\n%s\n' % (
+                    pull_request['sha'], test_results[-1], errors,
+                    test_results[-3])
 
             print test_results
             s.rpush('comment_queue', json.dumps({
