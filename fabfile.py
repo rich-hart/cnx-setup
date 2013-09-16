@@ -57,7 +57,7 @@ def archive_setup(clone_url=None, sha=None, force_clone=False):
         sudo('python setup.py install')
         run('initialize_cnx-archive_db development.ini')
         with fexpect.expecting(fexpect.expect('Password for user cnxarchive:', 'cnxarchive')):
-            fexpect.run('psql -U cnxarchive cnxarchive -f example-data.sql')
+            fexpect.run('psql -U cnxarchive cnxarchive -f cnxarchive/test-data/data.sql')
 
 def archive_run():
     """Run cnx-archive
