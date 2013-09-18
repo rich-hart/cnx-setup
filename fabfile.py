@@ -32,6 +32,7 @@ def archive_setup(clone_url=None, sha=None, force_clone=False):
     _setup()
     _install_postgresql()
     query_setup()
+    upgrade_setup()
     if clone_url is None:
         clone_url = 'https://github.com/Connexions/cnx-archive.git'
     if force_clone:
@@ -68,19 +69,15 @@ def archive_run():
 def archive_test(test_case=None):
     """Test cnx-archive
     """
-    if test_case:
-        with cd('cnx-archive'):
-            with shell_env(TESTING_CONFIG='testing.ini'):
-                run('python -m unittest %s' % test_case)
-        return
-
-    if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
-        sudo('dropdb cnxarchive-testing', user='postgres')
-    sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
-    sudo('createlang plpythonu cnxarchive-testing', user='postgres')
+    if not test_case:
+        if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
+            sudo('dropdb cnxarchive-testing', user='postgres')
+        sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
+        sudo('createlang plpythonu cnxarchive-testing', user='postgres')
     with cd('cnx-archive'):
+        sudo('python setup.py install')
         with shell_env(TESTING_CONFIG='testing.ini'):
-            return run('python -m unittest discover', warn_only=True)
+            return run('python -m unittest %s' % (test_case or 'discover'), warn_only=True)
 
 def query_setup():
     """Set up cnx-query-grammar
@@ -100,6 +97,30 @@ def query_test():
     """
     with cd('cnx-query-grammar'):
         run('python -m unittest discover')
+
+def upgrade_setup():
+    """Set up cnx-upgrade
+    """
+    sudo('apt-get install --yes libxslt1-dev libxml2-dev')
+    if not fabric.contrib.files.exists('cnx-upgrade'):
+        run('git clone https://github.com/Connexions/cnx-upgrade.git')
+    if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
+        run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
+    with cd('rhaptos.cnxmlutils'):
+        run('git remote update -p')
+        run('git reset --hard origin/abstracts-and-metadata')
+        sudo('python setup.py install')
+    with cd('cnx-upgrade'):
+        sudo('python setup.py install')
+
+def upgrade_test():
+    """Run tests in cnx-upgrade
+    """
+    with cd('cnx-upgrade'):
+        with shell_env(DB_CONNECTION_STRING=
+                'dbname=cnxarchive-testing user=cnxarchive password=cnxarchive'
+                ' host=localhost port=5432'):
+            run('python -m unittest discover')
 
 def _install_nodejs():
     # the nodejs package in raring is too old for grunt-cli,
