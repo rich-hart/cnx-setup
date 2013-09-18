@@ -105,10 +105,8 @@ def upgrade_setup():
     if not fabric.contrib.files.exists('cnx-upgrade'):
         run('git clone https://github.com/Connexions/cnx-upgrade.git')
     if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
-        run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
+        run('git clone -b abstracts-and-metadata https://github.com/Connexions/rhaptos.cnxmlutils.git')
     with cd('rhaptos.cnxmlutils'):
-        run('git remote update -p')
-        run('git reset --hard origin/abstracts-and-metadata')
         sudo('python setup.py install')
     with cd('cnx-upgrade'):
         sudo('python setup.py install')
