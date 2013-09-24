@@ -69,11 +69,10 @@ def archive_run():
 def archive_test(test_case=None):
     """Test cnx-archive
     """
-    if not test_case:
-        if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
-            sudo('dropdb cnxarchive-testing', user='postgres')
-        sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
-        sudo('createlang plpythonu cnxarchive-testing', user='postgres')
+    if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
+        sudo('dropdb cnxarchive-testing', user='postgres')
+    sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
+    sudo('createlang plpythonu cnxarchive-testing', user='postgres')
     with cd('cnx-archive'):
         sudo('python setup.py install')
         with shell_env(TESTING_CONFIG='testing.ini'):
