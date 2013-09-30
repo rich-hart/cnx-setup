@@ -91,11 +91,13 @@ def query_run(args):
     """
     run('query_parser %s' % args)
 
-def query_test():
+def query_test(test_case=None):
     """Run tests in cnx-query-grammar
     """
     with cd('cnx-query-grammar'):
-        run('python -m unittest discover')
+        if test_case is None:
+            test_case = 'discover'
+        run('python -m unittest %s' % test_case)
 
 def upgrade_setup():
     """Set up cnx-upgrade
@@ -135,9 +137,8 @@ def _install_nodejs():
 
 def _configure_webview_nginx():
     sudo('apt-get install --yes nginx')
-    if not fabric.contrib.files.exists('/etc/nginx/sites-available/webview'):
-        put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
-        fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', run('pwd'), use_sudo=True)
+    put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
+    fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', run('pwd'), use_sudo=True)
     webview_run()
 
 def webview_setup():
