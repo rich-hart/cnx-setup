@@ -16,7 +16,7 @@ def _install_postgresql():
         fabric.contrib.files.append('/etc/apt/sources.list.d/pgdg.list', 'deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main 9.3', use_sudo=True)
         sudo('wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | apt-key add -')
         sudo('apt-get update')
-        sudo('apt-get install --yes postgresql-9.3 libpq-dev postgresql-plpython-9.3')
+        sudo('apt-get install --yes postgresql-9.3 postgresql-server-dev-9.3 postgresql-client-9.3 postgresql-contrib-9.3 postgresql-plpython-9.3')
         fabric.contrib.files.sed('/etc/postgresql/9.3/main/pg_hba.conf', '^local\s*all\s*all\s*peer\s*$', 'local all all md5', use_sudo=True)
         sudo('/etc/init.d/postgresql restart')
 
@@ -26,11 +26,21 @@ def _postgres_user_exists(username):
 def _postgres_db_exists(dbname):
     return dbname in sudo('psql -l', user='postgres')
 
+def _install_plxslt():
+    sudo('apt-get install --yes libxml2-dev libxslt-dev pkg-config')
+    sudo('rm -rf plxslt')
+    run('git clone https://github.com/petere/plxslt.git')
+    with cd('plxslt'):
+        run('make')
+        sudo('make install')
+    sudo('rm -rf plxslt')
+
 def archive_setup(clone_url=None, sha=None, force_clone=False):
     """Set up cnx-archive
     """
     _setup()
     _install_postgresql()
+    _install_plxslt()
     query_setup()
     upgrade_setup()
     if clone_url is None:
@@ -56,9 +66,7 @@ def archive_setup(clone_url=None, sha=None, force_clone=False):
     sudo('createlang plpythonu cnxarchive', user='postgres')
     with cd('cnx-archive'):
         sudo('python setup.py install')
-        run('initialize_cnx-archive_db development.ini')
-        with fexpect.expecting(fexpect.expect('Password for user cnxarchive:', 'cnxarchive')):
-            fexpect.run('psql -U cnxarchive cnxarchive -f cnxarchive/test-data/data.sql')
+        run('initialize_cnx-archive_db --with-example-data development.ini')
 
 def archive_run():
     """Run cnx-archive
@@ -73,6 +81,8 @@ def archive_test(test_case=None):
         sudo('dropdb cnxarchive-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
+    with cd('plpydbapi'):
+        sudo('python setup.py install')
     with cd('cnx-archive'):
         sudo('python setup.py install')
         with shell_env(TESTING_CONFIG='testing.ini'):
@@ -106,7 +116,7 @@ def upgrade_setup():
     if not fabric.contrib.files.exists('cnx-upgrade'):
         run('git clone https://github.com/Connexions/cnx-upgrade.git')
     if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
-        run('git clone -b abstracts-and-metadata https://github.com/Connexions/rhaptos.cnxmlutils.git')
+        run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
     with cd('rhaptos.cnxmlutils'):
         sudo('python setup.py install')
     with cd('cnx-upgrade'):
