@@ -74,9 +74,7 @@ def archive_run():
     with cd('cnx-archive'):
         run('paster serve development.ini')
 
-def archive_test(test_case=None):
-    """Test cnx-archive
-    """
+def _archive_test_setup():
     if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
         sudo('dropdb cnxarchive-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
@@ -85,6 +83,12 @@ def archive_test(test_case=None):
         sudo('python setup.py install')
     with cd('cnx-archive'):
         sudo('python setup.py install')
+
+def archive_test(test_case=None):
+    """Test cnx-archive
+    """
+    _archive_test_setup()
+    with cd('cnx-archive'):
         with shell_env(TESTING_CONFIG='testing.ini'):
             return run('python -m unittest %s' % (test_case or 'discover'), warn_only=True)
 
@@ -125,11 +129,12 @@ def upgrade_setup():
 def upgrade_test():
     """Run tests in cnx-upgrade
     """
+    _archive_test_setup()
     with cd('cnx-upgrade'):
         with shell_env(DB_CONNECTION_STRING=
                 'dbname=cnxarchive-testing user=cnxarchive password=cnxarchive'
                 ' host=localhost port=5432'):
-            run('python -m unittest discover')
+            sudo('python setup.py test')
 
 def _install_nodejs():
     # the nodejs package in raring is too old for grunt-cli,
@@ -328,6 +333,12 @@ def repo_run_content_repo():
     with cd('rhaptos2.repo/venvs/vrepo'):
         with prefix('source bin/activate'):
             run('rhaptos2repo-run --debug --config=develop.ini')
+
+def cnxmlutils_test():
+    """Run rhaptos.cnxmlutils tests
+    """
+    with cd('rhaptos.cnxmlutils'):
+        run('python -m unittest discover')
 
 def test():
     """A test task to see whether paramiko is broken
