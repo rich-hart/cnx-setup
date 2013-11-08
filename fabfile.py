@@ -126,15 +126,19 @@ def upgrade_setup():
     with cd('cnx-upgrade'):
         sudo('python setup.py install')
 
-def upgrade_test():
+def upgrade_test(test_case=None):
     """Run tests in cnx-upgrade
     """
+    if test_case:
+        test_case = '-s %s' % test_case
+    else:
+        test_case = ''
     _archive_test_setup()
     with cd('cnx-upgrade'):
         with shell_env(DB_CONNECTION_STRING=
                 'dbname=cnxarchive-testing user=cnxarchive password=cnxarchive'
                 ' host=localhost port=5432'):
-            sudo('python setup.py test')
+            sudo('python setup.py test %s' % test_case)
 
 def _install_nodejs():
     # the nodejs package in raring is too old for grunt-cli,
