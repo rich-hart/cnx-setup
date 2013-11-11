@@ -35,6 +35,41 @@ def _install_plxslt():
         sudo('make install')
     sudo('rm -rf plxslt')
 
+def archive_setup_real_data():
+    """Set up cnxarchive database with real data
+    """
+    if not _postgres_user_exists('cnxarchive'):
+        prompts = []
+        prompts += fexpect.expect('Enter password for new role:', 'cnxarchive')
+        prompts += fexpect.expect('Enter it again:', 'cnxarchive')
+        with fexpect.expecting(prompts):
+            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
+
+    if _postgres_db_exists('cnxarchive'):
+        sudo('dropdb cnxarchive', user='postgres')
+    sudo('createdb -O cnxarchive cnxarchive', user='postgres')
+    sudo('createlang plpythonu cnxarchive', user='postgres')
+
+    run('zcat cnx-archive/repo_test_data.sql.gz >cnx-archive/repo_test_data.sql')
+
+    prompts = fexpect.expect('Password for user cnxarchive:', 'cnxarchive')
+    with fexpect.expecting(prompts):
+        fexpect.run('psql -U cnxarchive cnxarchive -f cnx-archive/repo_test_data.sql')
+
+    run('rm -rf cnx-archive/repo_test_data.sql')
+    run('cnx-upgrade v1')
+
+def run_to_html(query='', grep_for=''):
+    with cd('cnx-archive'):
+        sudo('python setup.py install')
+    with cd('cnx-upgrade'):
+        sudo('python setup.py install')
+    if query:
+        query = '--id-select-query=%s' % query
+    if grep_for:
+        grep_for = '2>&1 | grep %s' % grep_for
+    run('cnx-upgrade to_html %s %s' % (query, grep_for))
+
 def archive_setup(clone_url=None, sha=None, force_clone=False):
     """Set up cnx-archive
     """
