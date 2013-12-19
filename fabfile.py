@@ -1,3 +1,6 @@
+import json
+import os
+
 from fabric.api import *
 import fabric.contrib.files
 from ilogue import fexpect
@@ -59,16 +62,21 @@ def archive_setup_real_data():
     run('rm -rf cnx-archive/repo_test_data.sql')
     run('cnx-upgrade v1')
 
-def run_to_html(query='', grep_for=''):
+def run_cnxupgrade(upgrade='to_html', filename=None):
     with cd('cnx-archive'):
         sudo('python setup.py install')
     with cd('cnx-upgrade'):
         sudo('python setup.py install')
+
+    cmd = 'cnx-upgrade %s' % upgrade
+    query = os.getenv('ID_SELECT_QUERY')
     if query:
-        query = '--id-select-query=%s' % query
-    if grep_for:
-        grep_for = '2>&1 | grep %s' % grep_for
-    run('cnx-upgrade to_html %s %s' % (query, grep_for))
+        cmd += ' --id-select-query=%s' % json.dumps(query)
+    if filename:
+        cmd += ' --filename=%s' % filename
+    if upgrade == 'to_html':
+        cmd += ' --force'
+    run(cmd)
 
 def archive_setup(clone_url=None, sha=None, force_clone=False):
     """Set up cnx-archive
@@ -154,10 +162,7 @@ def upgrade_setup():
     sudo('apt-get install --yes libxslt1-dev libxml2-dev')
     if not fabric.contrib.files.exists('cnx-upgrade'):
         run('git clone https://github.com/Connexions/cnx-upgrade.git')
-    if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
-        run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
-    with cd('rhaptos.cnxmlutils'):
-        sudo('python setup.py install')
+    cnxmlutils_setup()
     with cd('cnx-upgrade'):
         sudo('python setup.py install')
 
@@ -170,6 +175,7 @@ def upgrade_test(test_case=None):
         test_case = ''
     _archive_test_setup()
     with cd('cnx-upgrade'):
+        sudo('python setup.py install')
         with shell_env(DB_CONNECTION_STRING=
                 'dbname=cnxarchive-testing user=cnxarchive password=cnxarchive'
                 ' host=localhost port=5432'):
@@ -330,6 +336,8 @@ def repo_setup():
     """
     _setup()
     _install_postgresql()
+    sudo('apt-get install --yes libxml2-dev libxslt1-dev python-psycopg2 python-pip')
+    _install_nodejs()
     sudo('apt-get install --yes npm')
 
     if not _postgres_user_exists('rhaptos2repo'):
@@ -345,33 +353,67 @@ def repo_setup():
     sudo('createdb -O rhaptos2repo rhaptos2repo', user='postgres')
     sudo('createdb -O rhaptos2repo rhaptos2users', user='postgres')
 
-    if not fabric.contrib.files.exists('rhaptos2.repo'):
-        run('mkdir rhaptos2.repo')
-        run('wget https://raw.github.com/Connexions/rhaptos2.repo/master/quickdownload.sh')
-        sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
-        run('bash quickdownload.sh rhaptos2.repo')
-        run('rm quickdownload.sh')
+    if not fabric.contrib.files.exists('rhaptos2.common'):
+        run('git clone git@github.com:Connexions/rhaptos2.common.git')
+    with cd('rhaptos2.common'):
+        sudo('python setup.py install')
 
-def repo_run_user_server():
-    """Run rhaptos2.repo user server
+    if not fabric.contrib.files.exists('rhaptos2.repo'):
+        run('git clone -b fix-install git@github.com:Connexions/rhaptos2.repo.git')
+    with cd('rhaptos2.repo'):
+        sudo('python setup.py install')
+        if fabric.contrib.files.exists('repo-error.log'):
+            sudo('chown karen:karen repo-error.log')
+        sudo('rhaptos2repo-initdb develop.ini')
+
+    with cd('rhaptos2.repo'):
+        if not fabric.contrib.files.exists('atc'):
+            run('git clone git@github.com:Connexions/atc.git')
+    with cd('rhaptos2.repo/atc'):
+        run('npm install')
+        sudo('pip install -I PasteScript PasteDeploy waitress')
+
+def repo_run():
+    """Run rhaptos2.repo
     """
     with cd('rhaptos2.repo'):
-        with prefix('source venvs/vrepo/bin/activate'):
-            run('cd src/rhaptos2.user && python rhaptos2/user/run.py --config local.ini --port 8081')
+        run('paster serve paster-development.ini')
 
-def repo_run_content_repo():
-    """Run rhaptos2.repo content repository instance
+#def repo_run_content_repo():
+#    """Run rhaptos2.repo content repository instance
+#    """
+#    if not fabric.contrib.files.exists('/opt'):
+#        sudo('mkdir /opt')
+#    if not fabric.contrib.files.exists('/opt/cnx'):
+#        sudo('mkdir /opt/cnx')
+#    if not fabric.contrib.files.exists('/opt/cnx/log'):
+#        sudo('mkdir /opt/cnx/log')
+#    sudo('chown %s:%s /opt/cnx/log' % (env.user, env.user))
+#    with cd('rhaptos2.repo/venvs/vrepo'):
+#        with prefix('source bin/activate'):
+#            run('cd ../../src/rhaptos2.repo && python setup.py install')
+#            run('rhaptos2repo-run --debug --config=develop.ini')
+
+def repo_test_server():
+    with cd('rhaptos2.repo/src/rhaptos2.repo'):
+        with prefix('source ../../venvs/vrepo/bin/activate'):
+            run('cd rhaptos2/repo && python run.py --config=../../testing.ini --host 0.0.0.0 --port=8000')
+
+def repo_test():
+    """Run rhaptos.repo tests
     """
-    if not fabric.contrib.files.exists('/opt'):
-        sudo('mkdir /opt')
-    if not fabric.contrib.files.exists('/opt/cnx'):
-        sudo('mkdir /opt/cnx')
-    if not fabric.contrib.files.exists('/opt/cnx/log'):
-        sudo('mkdir /opt/cnx/log')
-    sudo('chown %s:%s /opt/cnx/log' % (env.user, env.user))
-    with cd('rhaptos2.repo/venvs/vrepo'):
-        with prefix('source bin/activate'):
-            run('rhaptos2repo-run --debug --config=develop.ini')
+    with cd('rhaptos2.repo/src/rhaptos2.repo'):
+        with prefix('source ../../venvs/vrepo/bin/activate'):
+            run('python setup.py install')
+            run('cd rhaptos2/repo/tests && bash ./runtests.sh wsgi')
+
+def cnxmlutils_setup():
+    """Set up rhaptos.cnxmlutils
+    """
+    if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
+        run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
+    with cd('rhaptos.cnxmlutils'):
+        sudo('python setup.py install')
 
 def cnxmlutils_test():
     """Run rhaptos.cnxmlutils tests
