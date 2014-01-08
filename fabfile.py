@@ -336,7 +336,7 @@ def repo_setup():
     """
     _setup()
     _install_postgresql()
-    sudo('apt-get install --yes libxml2-dev libxslt1-dev python-psycopg2 python-pip')
+    sudo('apt-get install --yes libxml2-dev libxslt1-dev')
     _install_nodejs()
     sudo('apt-get install --yes npm')
 
@@ -370,8 +370,9 @@ def repo_setup():
         if not fabric.contrib.files.exists('atc'):
             run('git clone git@github.com:Connexions/atc.git')
     with cd('rhaptos2.repo/atc'):
+        sudo('npm update -g bower', warn_only=True)
         run('npm install')
-        sudo('pip install -I PasteScript PasteDeploy waitress')
+        sudo('easy_install-2.7 PasteScript PasteDeploy waitress')
 
 def repo_run():
     """Run rhaptos2.repo
@@ -379,33 +380,24 @@ def repo_run():
     with cd('rhaptos2.repo'):
         run('paster serve paster-development.ini')
 
-#def repo_run_content_repo():
-#    """Run rhaptos2.repo content repository instance
-#    """
-#    if not fabric.contrib.files.exists('/opt'):
-#        sudo('mkdir /opt')
-#    if not fabric.contrib.files.exists('/opt/cnx'):
-#        sudo('mkdir /opt/cnx')
-#    if not fabric.contrib.files.exists('/opt/cnx/log'):
-#        sudo('mkdir /opt/cnx/log')
-#    sudo('chown %s:%s /opt/cnx/log' % (env.user, env.user))
-#    with cd('rhaptos2.repo/venvs/vrepo'):
-#        with prefix('source bin/activate'):
-#            run('cd ../../src/rhaptos2.repo && python setup.py install')
-#            run('rhaptos2repo-run --debug --config=develop.ini')
-
 def repo_test_server():
-    with cd('rhaptos2.repo/src/rhaptos2.repo'):
-        with prefix('source ../../venvs/vrepo/bin/activate'):
-            run('cd rhaptos2/repo && python run.py --config=../../testing.ini --host 0.0.0.0 --port=8000')
+    with cd('rhaptos2.repo'):
+        run('paster serve paster-testing.ini')
 
-def repo_test():
+def _repo_test_setup():
+    if 'rhaptos2repo-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
+        sudo('dropdb rhaptos2repo-testing', user='postgres')
+    sudo('createdb -O rhaptos2repo rhaptos2repo-testing', user='postgres')
+    with cd('rhaptos2.repo'):
+        sudo('python setup.py install')
+        sudo('rhaptos2repo-initdb testing.ini')
+
+def repo_test(test_type='wsgi'):
     """Run rhaptos.repo tests
     """
-    with cd('rhaptos2.repo/src/rhaptos2.repo'):
-        with prefix('source ../../venvs/vrepo/bin/activate'):
-            run('python setup.py install')
-            run('cd rhaptos2/repo/tests && bash ./runtests.sh wsgi')
+    _repo_test_setup()
+    with cd('rhaptos2.repo/'):
+        sudo('python setup.py test --test-type={}'.format(test_type))
 
 def cnxmlutils_setup():
     """Set up rhaptos.cnxmlutils
