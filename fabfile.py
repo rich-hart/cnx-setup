@@ -385,10 +385,13 @@ def repo_test_server():
         run('paster serve paster-testing.ini')
 
 def _repo_test_setup():
+    _archive_test_setup()
+    sudo('initialize_cnx-archive_db --with-example-data cnx-archive/testing.ini')
     if 'rhaptos2repo-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
         sudo('dropdb rhaptos2repo-testing', user='postgres')
     sudo('createdb -O rhaptos2repo rhaptos2repo-testing', user='postgres')
     with cd('rhaptos2.repo'):
+        sudo('rm -rf build')
         sudo('python setup.py install')
         sudo('rhaptos2repo-initdb testing.ini')
 
