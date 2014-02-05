@@ -406,7 +406,7 @@ def cnxmlutils_setup():
     """Set up rhaptos.cnxmlutils
     """
     if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
-        run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
+        run('git clone git@github.com:Connexions/rhaptos.cnxmlutils.git')
     with cd('rhaptos.cnxmlutils'):
         sudo('python setup.py install')
 
@@ -414,6 +414,20 @@ def cnxmlutils_test():
     """Run rhaptos.cnxmlutils tests
     """
     with cd('rhaptos.cnxmlutils'):
+        run('python -m unittest discover')
+
+def cnxepub_setup():
+    """Set up cnx-epub
+    """
+    if not fabric.contrib.files.exists('cnx-epub'):
+        run('git clone git@github.com:Connexions/cnx-epub.git')
+    with cd('cnx-epub'):
+        sudo('python setup.py install')
+
+def cnxepub_test():
+    """Run cnx-epub tests
+    """
+    with cd('cnx-epub'):
         run('python -m unittest discover')
 
 def test():
