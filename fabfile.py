@@ -13,6 +13,12 @@ def _setup():
     sudo('apt-get update')
     sudo('apt-get install --yes git python-setuptools python-dev')
 
+def _setup_virtualenv():
+    """Install virtualenv and set up virtualenv in the current directory
+    """
+    sudo('apt-get install --yes python-virtualenv')
+    run('virtualenv .')
+
 def _install_postgresql():
     # taken from https://wiki.postgresql.org/wiki/Apt and https://wiki.postgresql.org/wiki/Apt/FAQ#I_want_to_try_the_beta_version_of_the_next_PostgreSQL_release
     if not fabric.contrib.files.exists('/etc/apt/sources.list.d/pgdg.list'):
@@ -244,14 +250,14 @@ def export_setup():
     """Set up oer.exports
     """
     _setup()
-    sudo('apt-get install --yes python-virtualenv libxslt1-dev libxml2-dev zlib1g-dev '
+    sudo('apt-get install --yes libxslt1-dev libxml2-dev zlib1g-dev '
             'librsvg2-bin otf-stix imagemagick inkscape ruby libxml2-utils zip '
             'openjdk-7-jre-headless docbook-xsl-ns')
     sudo('apt-get install --yes xsltproc') # used for generating epub
     if not fabric.contrib.files.exists('oer.exports'):
         run('git clone https://github.com/Connexions/oer.exports.git')
     with cd('oer.exports'):
-        run('virtualenv .')
+        _setup_virtualenv()
         with prefix('source bin/activate'):
             run('easy_install lxml argparse pillow')
     if not run('which prince', warn_only=True):
@@ -309,9 +315,19 @@ def user_setup():
         run('git clone -b cnx-master https://github.com/pumazi/velruse.git')
         with cd('velruse'):
             sudo('python setup.py install')
+    _install_nodejs()
+    sudo('apt-get install --yes npm')
+    sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
+    sudo('npm install -g grunt-cli bower')
+    # remove ~/tmp after a system npm install as ~/tmp is owned by root and
+    # cannot be written as the user in the next step
+    sudo('rm -rf ~/tmp')
+    with cd('cnx-user/cnxuser/assets'):
+        run('npm install')
     with cd('cnx-user'):
         # change velruse to use 1.0.3 which is the version from pumazmi/veruse
-        fabric.contrib.files.sed('setup.py', 'velruse', 'velruse==1.0.3')
+        if not fabric.contrib.files.contains('setup.py', 'velruse==1.0.3'):
+            fabric.contrib.files.sed('setup.py', 'velruse', 'velruse==1.0.3')
         sudo('python setup.py install')
         # httplib2 top_level.txt is not readable by the user for some reason
         # (while other top_level.txt are).  This causes initialize_cnx-user_db
@@ -323,13 +339,14 @@ def user_run():
     """Run cnx-user
     """
     with cd('cnx-user'):
+        sudo('python setup.py install')
         run('pserve development.ini')
 
-def user_test():
+def user_test(test_case=None):
     """Run tests for cnx-user
     """
     with cd('cnx-user'):
-        run('python -m unittest discover')
+        run('python -m unittest %s' % (test_case or 'discover',))
 
 def repo_setup():
     """Set up rhaptos2.repo
@@ -429,6 +446,20 @@ def cnxepub_test():
     """
     with cd('cnx-epub'):
         run('python -m unittest discover')
+
+def draft_setup():
+    """Set up draft-transforms
+    """
+    _setup()
+    if not fabric.contrib.files.exists('draft-transforms'):
+        run('git clone git@github.com:Connexions/draft-transforms.git')
+    with cd('draft-transforms'):
+        _setup_virtualenv()
+        if not fabric.contrib.files.exists('requests-toolbelt'):
+            run('git clone https://github.com/sigmavirus24/requests-toolbelt.git')
+        with cd('requests-toolbelt'):
+            run('../bin/python setup.py install')
+        run('./bin/python setup.py install')
 
 def test():
     """A test task to see whether paramiko is broken
