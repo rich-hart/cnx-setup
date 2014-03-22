@@ -13,11 +13,11 @@ def _setup():
     sudo('apt-get update')
     sudo('apt-get install --yes git python-setuptools python-dev')
 
-def _setup_virtualenv():
+def _setup_virtualenv(with_python3=False):
     """Install virtualenv and set up virtualenv in the current directory
     """
     sudo('apt-get install --yes python-virtualenv')
-    run('virtualenv .')
+    run('virtualenv %s .' % ('-p `which python3`' if with_python3 else ''))
 
 def _install_postgresql():
     # taken from https://wiki.postgresql.org/wiki/Apt and https://wiki.postgresql.org/wiki/Apt/FAQ#I_want_to_try_the_beta_version_of_the_next_PostgreSQL_release
@@ -43,6 +43,9 @@ def _install_plxslt():
         run('make')
         sudo('make install')
     sudo('rm -rf plxslt')
+
+def _install_mongodb():
+    sudo('apt-get install --yes mongodb')
 
 def archive_setup_real_data():
     """Set up cnxarchive database with real data
@@ -346,6 +349,7 @@ def user_test(test_case=None):
     """Run tests for cnx-user
     """
     with cd('cnx-user'):
+        sudo('python setup.py install')
         run('python -m unittest %s' % (test_case or 'discover',))
 
 def repo_setup():
@@ -460,6 +464,51 @@ def draft_setup():
         with cd('requests-toolbelt'):
             run('../bin/python setup.py install')
         run('./bin/python setup.py install')
+
+def authoring_setup():
+    """Set up cnx-authoring
+    """
+    _setup()
+    _install_mongodb()
+    if not fabric.contrib.files.exists('cnx-authoring'):
+        run('git clone git@github.com:karenc/cnx-authoring.git')
+    with cd('cnx-authoring'):
+        if not fabric.contrib.files.exists('bin/python'):
+            _setup_virtualenv()
+        run('./bin/python setup.py install')
+        if not fabric.contrib.files.exists('python3'):
+            run('mkdir python3')
+            with cd('python3'):
+                _setup_virtualenv(with_python3=True)
+                run('ln -s ../development.ini')
+                run('ln -s ../setup.py')
+                run('ln -s ../cnxauthoring')
+                run('./bin/python3 setup.py install')
+
+def authoring_run():
+    """Run cnx-authoring
+    """
+    with cd('cnx-authoring'):
+        run('./bin/python setup.py install')
+        run('./bin/pserve development.ini')
+
+def authoring_test(test_case=''):
+    """Run cnx-authoring tests
+    """
+    if test_case:
+        test_case = '-s %s' % test_case
+    with cd('cnx-query-grammar'):
+        run('~/cnx-authoring/bin/python setup.py install')
+        run('~/cnx-authoring/python3/bin/python3 setup.py install')
+    with cd('cnx-epub'):
+        run('~/cnx-authoring/bin/python setup.py install')
+        run('~/cnx-authoring/python3/bin/python3 setup.py install')
+    with cd('cnx-authoring'):
+        run('./bin/python setup.py install')
+        run('./bin/python setup.py test %s' % test_case)
+    with cd('cnx-authoring/python3'):
+        run('./bin/python3 setup.py install')
+        run('./bin/python3 setup.py test %s' % test_case)
 
 def test():
     """A test task to see whether paramiko is broken
