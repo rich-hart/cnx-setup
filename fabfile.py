@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 from fabric.api import *
 import fabric.contrib.files
@@ -10,7 +11,7 @@ env.use_ssh_config = True
 def _setup():
     """Install packages necessary for the connexion projects
     """
-    sudo('apt-get update')
+    #sudo('apt-get update')
     sudo('apt-get install --yes git python-setuptools python-dev')
 
 def _setup_virtualenv(with_python3=False):
@@ -33,7 +34,7 @@ def _postgres_user_exists(username):
     return '1' in sudo('psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname=\'%s\'"' % username, user='postgres')
 
 def _postgres_db_exists(dbname):
-    return dbname in sudo('psql -l', user='postgres')
+    return dbname in sudo('psql -l --pset="pager=off"', user='postgres')
 
 def _install_plxslt():
     sudo('apt-get install --yes libxml2-dev libxslt-dev pkg-config')
@@ -131,8 +132,8 @@ def _archive_test_setup():
         sudo('dropdb cnxarchive-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
-    with cd('plpydbapi'):
-        sudo('python setup.py install')
+#   with cd('plpydbapi'):
+#       sudo('python setup.py install')
     with cd('cnx-archive'):
         sudo('python setup.py install')
 
@@ -208,7 +209,6 @@ def _configure_webview_nginx():
     sudo('apt-get install --yes nginx')
     put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
     fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', run('pwd'), use_sudo=True)
-    webview_run()
 
 def webview_setup():
     """Set up webview
@@ -226,6 +226,7 @@ def webview_setup():
     with cd('webview'):
         run('npm install')
     _configure_webview_nginx()
+    webview_run()
 
 def webview_run():
     """Run webview
@@ -249,7 +250,7 @@ def webview_update():
         run('npm update')
         run('bower update')
 
-def export_setup():
+def exports_setup():
     """Set up oer.exports
     """
     _setup()
@@ -258,7 +259,7 @@ def export_setup():
             'openjdk-7-jre-headless docbook-xsl-ns')
     sudo('apt-get install --yes xsltproc') # used for generating epub
     if not fabric.contrib.files.exists('oer.exports'):
-        run('git clone https://github.com/Connexions/oer.exports.git')
+        run('git clone git@github.com:Connexions/oer.exports.git')
     with cd('oer.exports'):
         _setup_virtualenv()
         with prefix('source bin/activate'):
@@ -269,14 +270,14 @@ def export_setup():
         sudo('dpkg -i prince_9.0-2_ubuntu12.04_amd64.deb')
         run('rm prince_9.0-2_ubuntu12.04_amd64.deb')
 
-def export_test():
+def exports_test():
     """Run tests in oer.exports
     """
     with cd('oer.exports'):
         with prefix('source bin/activate'):
             run('python -m unittest discover')
 
-def export_generate_pdf():
+def exports_generate_pdf():
     """Generate a PDF in oer.exports
     """
     with cd('oer.exports'):
@@ -286,7 +287,7 @@ def export_generate_pdf():
     local('evince /tmp/result.pdf')
     local('rm /tmp/result.pdf')
 
-def export_generate_epub():
+def exports_generate_epub():
     """Generate an EPUB in oer.exports
     """
     with cd('oer.exports'):
@@ -443,13 +444,25 @@ def cnxepub_setup():
     if not fabric.contrib.files.exists('cnx-epub'):
         run('git clone git@github.com:Connexions/cnx-epub.git')
     with cd('cnx-epub'):
-        sudo('python setup.py install')
+        _setup_virtualenv()
+        run('./bin/python setup.py install')
+        if not fabric.contrib.files.exists('python3'):
+            run('mkdir python3')
+            with cd('python3'):
+                _setup_virtualenv(with_python3=True)
+                run('./bin/python3 setup.py install')
 
-def cnxepub_test():
+def cnxepub_test(test_case=''):
     """Run cnx-epub tests
     """
+    if test_case:
+        test_case = '-s %s' % test_case
     with cd('cnx-epub'):
-        run('python -m unittest discover')
+        run('./bin/python setup.py install')
+        run('./bin/python setup.py test %s' % test_case)
+        with cd('python3'):
+            run('./bin/python3 setup.py install')
+            run('./bin/python3 setup.py test %s' % test_case)
 
 def draft_setup():
     """Set up draft-transforms
@@ -469,13 +482,11 @@ def authoring_setup():
     """Set up cnx-authoring
     """
     _setup()
-    _install_mongodb()
+    #_install_mongodb()
     if not fabric.contrib.files.exists('cnx-authoring'):
-        run('git clone git@github.com:karenc/cnx-authoring.git')
+        run('git clone git@github.com:Connexions/cnx-authoring.git')
     with cd('cnx-authoring'):
-        if not fabric.contrib.files.exists('bin/python'):
-            _setup_virtualenv()
-        run('./bin/python setup.py install')
+        _setup_virtualenv()
         if not fabric.contrib.files.exists('python3'):
             run('mkdir python3')
             with cd('python3'):
@@ -483,7 +494,18 @@ def authoring_setup():
                 run('ln -s ../development.ini')
                 run('ln -s ../setup.py')
                 run('ln -s ../cnxauthoring')
-                run('./bin/python3 setup.py install')
+
+    with cd('cnx-query-grammar'):
+        run('~/cnx-authoring/bin/python setup.py install')
+        run('~/cnx-authoring/python3/bin/python3 setup.py install')
+    with cd('cnx-epub'):
+        run('~/cnx-authoring/bin/python setup.py install')
+        run('~/cnx-authoring/python3/bin/python3 setup.py install')
+
+    with cd('cnx-authoring'):
+        run('./bin/python setup.py install')
+        with cd('python3'):
+            run('./bin/python3 setup.py install')
 
 def authoring_run():
     """Run cnx-authoring
@@ -495,6 +517,15 @@ def authoring_run():
 def authoring_test(test_case=''):
     """Run cnx-authoring tests
     """
+    if not _postgres_user_exists('cnxauthoring'):
+        prompts = []
+        prompts += fexpect.expect('Enter password for new role:', 'cnxauthoring')
+        prompts += fexpect.expect('Enter it again:', 'cnxauthoring')
+        with fexpect.expecting(prompts):
+            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxauthoring', user='postgres')
+    if _postgres_db_exists('authoring-test'):
+        sudo('dropdb authoring-test', user='postgres')
+    sudo('createdb -O cnxauthoring authoring-test', user='postgres')
     if test_case:
         test_case = '-s %s' % test_case
     with cd('cnx-query-grammar'):
@@ -504,11 +535,213 @@ def authoring_test(test_case=''):
         run('~/cnx-authoring/bin/python setup.py install')
         run('~/cnx-authoring/python3/bin/python3 setup.py install')
     with cd('cnx-authoring'):
+        run('rm -rf dist build')
         run('./bin/python setup.py install')
+        run('./bin/cnx-authoring-initialize_db testing.ini')
         run('./bin/python setup.py test %s' % test_case)
+    sudo('dropdb authoring-test', user='postgres')
+    sudo('createdb -O cnxauthoring authoring-test', user='postgres')
     with cd('cnx-authoring/python3'):
+        run('rm -rf dist build')
         run('./bin/python3 setup.py install')
+        run('./bin/cnx-authoring-initialize_db testing.ini')
         run('./bin/python3 setup.py test %s' % test_case)
+
+def publishing_setup():
+    """Set up cnx-publishing
+    """
+    _setup()
+    if not fabric.contrib.files.exists('cnx-publishing'):
+        run('git clone git@github.com:Connexions/cnx-publishing.git')
+
+    with cd('cnx-epub'):
+        sudo('python setup.py install')
+
+    with cd('cnx-archive'):
+        sudo('python setup.py install')
+
+    with cd('cnx-publishing'):
+        sudo('python setup.py install')
+        run('cnx-publishing-initdb development.ini')
+
+def publishing_run():
+    """Run cnx-publishing
+    """
+    with cd('cnx-epub'):
+        sudo('python setup.py install')
+
+    with cd('cnx-publishing'):
+        sudo('python setup.py install')
+        run('paster serve development.ini')
+
+def publishing_test(test_case=''):
+    """Run cnx-publishing tests
+    """
+    if not _postgres_user_exists('cnxarchive'):
+        prompts = []
+        prompts += fexpect.expect('Enter password for new role:', 'cnxarchive')
+        prompts += fexpect.expect('Enter it again:', 'cnxarchive')
+        with fexpect.expecting(prompts):
+            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
+
+    if _postgres_db_exists('cnxarchive-testing'):
+        sudo('dropdb cnxarchive-testing', user='postgres')
+    sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
+
+    if test_case:
+        test_case = '-s %s' % test_case
+
+    with cd('cnx-epub'):
+        sudo('python setup.py install')
+    with cd('cnx-archive'):
+        sudo('python setup.py install')
+
+    with cd('cnx-publishing'):
+        sudo('rm -rf dist build')
+        sudo('python setup.py install')
+        run('python setup.py test %s' % test_case)
+        #run('python -m unittest %s' % (test_case or 'discover'))
+
+def _install_pybit_dependencies():
+    _install_postgresql()
+    sudo('apt-get install -y rabbitmq-server')
+    if not _postgres_user_exists('pybit'):
+        sudo('psql -d postgres -c "CREATE USER pybit WITH SUPERUSER PASSWORD \'pybit\';"', user='postgres')
+    if _postgres_db_exists('pybit'):
+        sudo('dropdb pybit', user='postgres')
+    sudo('createdb -O pybit pybit', user='postgres')
+
+    if not fabric.contrib.files.exists('pybit'):
+        run('git clone https://github.com/nicholasdavidson/pybit.git')
+    with cd('pybit'):
+        sudo('psql pybit -c \'\\i db/schema.sql\'', user='postgres')
+        #sudo('psql pybit -c \'\\i db/populate.sql\'', user='postgres')
+    if not fabric.contrib.files.exists('cnx-pybit'):
+        run('git clone https://github.com/Connexions/pybit.git cnx-pybit')
+    with cd('cnx-pybit'):
+        sudo('psql pybit -c \'\\i db/populate_cnx.sql\'', user='postgres')
+
+def acmeio_setup():
+    """Set up acmeio"""
+    _setup()
+    _install_pybit_dependencies()
+    if not fabric.contrib.files.exists('acmeio'):
+        run('git clone git@github.com:Connexions/acmeio.git')
+    with cd('acmeio'):
+        sudo('psql pybit -c \'\\i sql_additions.sql\'', user='postgres')
+        _setup_virtualenv()
+        run('./bin/pip install -e ../pybit')
+        run('./bin/python setup.py install')
+
+def acmeio_test(test_case=''):
+    """Run acmeio tests"""
+    if test_case:
+        test_case = '-s %s' % test_case
+    with cd('acmeio'):
+        run('./bin/python setup.py install')
+        run('./bin/pserve production.ini start')
+        time.sleep(5)
+        run('./bin/python setup.py test %s' % test_case, warn_only=True)
+        run('./bin/pserve production.ini stop')
+
+def acmeio_run():
+    """Run acmeio"""
+    with cd('acmeio'):
+        run('./bin/python setup.py install')
+        run('./bin/pserve production.ini')
+
+def buildout_setup():
+    """Set up cnx-buildout"""
+    if not fabric.contrib.files.exists('cnx-buildout'):
+        run('git clone git@github.com:Rhaptos/cnx-buildout.git')
+
+def roadrunners_setup():
+    """Set up roadrunners"""
+    _setup()
+    _install_pybit_dependencies()
+    coyote_setup()
+    rhaptosprint_setup()
+    exports_setup()
+    buildout_setup()
+    sudo('apt-get install --yes realpath')
+    if not fabric.contrib.files.exists('roadrunners'):
+        run('git clone git@github.com:Connexions/roadrunners.git')
+    with cd('roadrunners'):
+        _setup_virtualenv()
+        run('./bin/pip install -e ../pybit')
+        run('./bin/pip install -e ../coyote')
+        run('./bin/pip install Pillow')
+        run('./bin/pip install -e ../Products.RhaptosPrint')
+        pwd = run('pwd')
+        fabric.contrib.files.sed('test.ini', 'output-dir = .*',
+                                 'output-dir = {}'.format(pwd))
+        fabric.contrib.files.sed(
+                'test.ini', 'python = .*',
+                'python = {}'.format(os.path.join(pwd, 'bin/python')))
+        print_dir = run('realpath ../Products.RhaptosPrint/Products/'
+                        'RhaptosPrint/printing')
+        fabric.contrib.files.sed(
+                'test.ini',  'print-dir = .*',
+                'print-dir = {}'.format(print_dir))
+        oerexports_path = run('realpath ../oer.exports')
+        fabric.contrib.files.sed(
+                'test.ini', 'oer.exports-dir = .*',
+                'oer.exports-dir = {}'.format(oerexports_path))
+        buildout_path = run('realpath ../cnx-buildout')
+        fabric.contrib.files.sed(
+                'test.ini', 'cnx-buildout-dir = .*',
+                'cnx-buildout-dir = {}'.format(buildout_path))
+        fabric.contrib.files.sed(
+                'test.ini', '^pdf-generator = .*',
+                'pdf-generator = {}'.format(run('which prince')))
+        run('./bin/python setup.py install')
+
+def roadrunners_test():
+    """Run roadrunners tests"""
+    with cd('roadrunners'):
+        run('./bin/python setup.py install')
+        run('./bin/python setup.py test')
+
+def coyote_setup():
+    """Set up coyote"""
+    _setup()
+    _install_pybit_dependencies()
+    if not fabric.contrib.files.exists('coyote'):
+        run('git clone git@github.com:Connexions/coyote.git')
+    with cd('coyote'):
+        _setup_virtualenv()
+        run('./bin/pip install -e ../pybit')
+        run('./bin/python setup.py install')
+
+def rhaptosprint_setup():
+    """Set up Products.RhaptosPrint"""
+    _setup()
+    if not fabric.contrib.files.exists('Products.RhaptosPrint'):
+        run('git clone git@github.com:Rhaptos/Products.RhaptosPrint.git')
+    sudo('apt-get install --yes texlive-full')
+    with cd('Products.RhaptosPrint'):
+        _setup_virtualenv()
+        sudo('apt-get install --yes libjpeg62-dev')
+        run('./bin/pip install Pillow')
+        run('./bin/python setup.py install')
+
+def coyote_setup():
+    """Set up coyote"""
+    _setup()
+    if not fabric.contrib.files.exists('coyote'):
+        run('git clone git@github.com:Connexions/coyote.git')
+    _install_pybit_dependencies()
+    with cd('coyote'):
+        _setup_virtualenv()
+        run('./bin/pip install -e ../pybit')
+        run('./bin/pip install -e ../acmeio')
+        run('./bin/python setup.py install')
+
+def coyote_test():
+    """Run coyote tests"""
+    with cd('coyote'):
+        run('./bin/python setup.py install')
+        run('./bin/python setup.py test')
 
 def test():
     """A test task to see whether paramiko is broken
