@@ -119,7 +119,7 @@ def archive_setup(clone_url=None, sha=None, force_clone=False):
     sudo('createlang plpythonu cnxarchive', user='postgres')
     with cd('cnx-archive'):
         sudo('python setup.py install')
-        run('initialize_cnx-archive_db --with-example-data development.ini')
+        run('cnx-archive-initdb --with-example-data development.ini')
 
 def archive_run():
     """Run cnx-archive
@@ -128,9 +128,12 @@ def archive_run():
         run('paster serve development.ini')
 
 def _archive_test_setup():
-    if 'cnxarchive-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
+    if _postgres_db_exists('cnxarchive-testing'):
         sudo('dropdb cnxarchive-testing', user='postgres')
+    if _postgres_db_exists('oscaccounts-testing'):
+        sudo('dropdb oscaccounts-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
+    sudo('createdb -O accounts oscaccounts-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
 #   with cd('plpydbapi'):
 #       sudo('python setup.py install')
@@ -142,8 +145,7 @@ def archive_test(test_case=None):
     """
     _archive_test_setup()
     with cd('cnx-archive'):
-        with shell_env(TESTING_CONFIG='testing.ini'):
-            return run('python -m unittest %s' % (test_case or 'discover'), warn_only=True)
+        return run('python -m unittest %s' % (test_case or 'discover'), warn_only=True)
 
 def query_setup():
     """Set up cnx-query-grammar
@@ -241,6 +243,10 @@ def webview_test():
     with cd('webview'):
         run('npm test')
 
+def webview_compile():
+    with cd('webview'):
+        run('npm install')
+
 def webview_update():
     """Update webview after a git pull
     """
@@ -249,6 +255,7 @@ def webview_update():
         run('npm install')
         run('npm update')
         run('bower update')
+    _configure_webview_nginx()
 
 def exports_setup():
     """Set up oer.exports
@@ -408,7 +415,7 @@ def repo_test_server():
 
 def _repo_test_setup():
     _archive_test_setup()
-    sudo('initialize_cnx-archive_db --with-example-data cnx-archive/testing.ini')
+    sudo('cnx-archive-initdb --with-example-data cnx-archive/tests/testing.ini')
     if 'rhaptos2repo-testing' in sudo('psql -l --pset="pager=off"', user='postgres'):
         sudo('dropdb rhaptos2repo-testing', user='postgres')
     sudo('createdb -O rhaptos2repo rhaptos2repo-testing', user='postgres')
@@ -432,11 +439,15 @@ def cnxmlutils_setup():
     with cd('rhaptos.cnxmlutils'):
         sudo('python setup.py install')
 
-def cnxmlutils_test():
+def cnxmlutils_test(test_case=''):
     """Run rhaptos.cnxmlutils tests
     """
+    if test_case:
+        test_case = '-s %s' % test_case
     with cd('rhaptos.cnxmlutils'):
-        run('python -m unittest discover')
+        sudo('python setup.py install')
+        sudo('python setup.py develop')
+        sudo('python setup.py test %s' % test_case)
 
 def cnxepub_setup():
     """Set up cnx-epub
@@ -494,6 +505,7 @@ def authoring_setup():
                 run('ln -s ../development.ini')
                 run('ln -s ../setup.py')
                 run('ln -s ../cnxauthoring')
+                run('ln -s ../testing.ini')
 
     with cd('cnx-query-grammar'):
         run('~/cnx-authoring/bin/python setup.py install')
@@ -528,13 +540,9 @@ def authoring_test(test_case=''):
     sudo('createdb -O cnxauthoring authoring-test', user='postgres')
     if test_case:
         test_case = '-s %s' % test_case
-    with cd('cnx-query-grammar'):
-        run('~/cnx-authoring/bin/python setup.py install')
-        run('~/cnx-authoring/python3/bin/python3 setup.py install')
-    with cd('cnx-epub'):
-        run('~/cnx-authoring/bin/python setup.py install')
-        run('~/cnx-authoring/python3/bin/python3 setup.py install')
     with cd('cnx-authoring'):
+        run('./bin/pip install -e ../cnx-query-grammar')
+        run('./bin/pip install -e ../cnx-epub')
         run('rm -rf dist build')
         run('./bin/python setup.py install')
         run('./bin/cnx-authoring-initialize_db testing.ini')
@@ -542,6 +550,8 @@ def authoring_test(test_case=''):
     sudo('dropdb authoring-test', user='postgres')
     sudo('createdb -O cnxauthoring authoring-test', user='postgres')
     with cd('cnx-authoring/python3'):
+        run('./bin/pip install -e ../../cnx-epub')
+        run('./bin/pip install -e ../../cnx-query-grammar')
         run('rm -rf dist build')
         run('./bin/python3 setup.py install')
         run('./bin/cnx-authoring-initialize_db testing.ini')
@@ -664,6 +674,7 @@ def roadrunners_setup():
     exports_setup()
     buildout_setup()
     sudo('apt-get install --yes realpath')
+    sudo('apt-get install --force-yes poppler-utils')
     if not fabric.contrib.files.exists('roadrunners'):
         run('git clone git@github.com:Connexions/roadrunners.git')
     with cd('roadrunners'):
