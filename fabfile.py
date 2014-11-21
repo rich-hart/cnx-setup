@@ -460,6 +460,8 @@ def cnxepub_setup():
         if not fabric.contrib.files.exists('python3'):
             run('mkdir python3')
             with cd('python3'):
+                run('ln -sf ../setup.py')
+                run('ln -sf ../cnxepub')
                 _setup_virtualenv(with_python3=True)
                 run('./bin/python3 setup.py install')
 
