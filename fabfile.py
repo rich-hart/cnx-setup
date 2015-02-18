@@ -135,6 +135,8 @@ def _archive_test_setup():
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
     sudo('createdb -O accounts oscaccounts-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
+    with cd('rhaptos.cnxmlutils'):
+        sudo('python setup.py install')
 #   with cd('plpydbapi'):
 #       sudo('python setup.py install')
     with cd('cnx-archive'):
@@ -495,7 +497,6 @@ def authoring_setup():
     """Set up cnx-authoring
     """
     _setup()
-    #_install_mongodb()
     if not fabric.contrib.files.exists('cnx-authoring'):
         run('git clone git@github.com:Connexions/cnx-authoring.git')
     with cd('cnx-authoring'):
@@ -542,22 +543,40 @@ def authoring_test(test_case=''):
     sudo('createdb -O cnxauthoring authoring-test', user='postgres')
     if test_case:
         test_case = '-s %s' % test_case
+    with cd('cnx-query-grammar'):
+        sudo('python setup.py install')
+    with cd('cnx-epub'):
+        sudo('python setup.py install')
+    with cd('rhaptos.cnxmlutils'):
+        sudo('python setup.py install')
+    with cd('plpydbapi'):
+        sudo('python setup.py install')
+    with cd('cnx-archive'):
+        sudo('python setup.py install')
+    _archive_test_setup()
+    with cd('cnx-publishing'):
+        sudo('python setup.py install')
     with cd('cnx-authoring'):
-        run('./bin/pip install -e ../cnx-query-grammar')
-        run('./bin/pip install -e ../cnx-epub')
-        run('rm -rf dist build')
-        run('./bin/python setup.py install')
-        run('./bin/cnx-authoring-initialize_db testing.ini')
-        run('./bin/python setup.py test %s' % test_case)
-    sudo('dropdb authoring-test', user='postgres')
-    sudo('createdb -O cnxauthoring authoring-test', user='postgres')
-    with cd('cnx-authoring/python3'):
-        run('./bin/pip install -e ../../cnx-epub')
-        run('./bin/pip install -e ../../cnx-query-grammar')
-        run('rm -rf dist build')
-        run('./bin/python3 setup.py install')
-        run('./bin/cnx-authoring-initialize_db testing.ini')
-        run('./bin/python3 setup.py test %s' % test_case)
+        sudo('python setup.py install')
+        run('cnx-authoring-initialize_db cnxauthoring/tests/testing.ini')
+        # conn.dsn doesn't work if the database requires password
+        # authentication
+        if run('grep storage.conn.dsn cnxauthoring/tests/test_functional.py', warn_only=True):
+            fabric.contrib.files.sed(
+                'cnxauthoring/tests/test_functional.py',
+                'storage.conn.dsn',
+                'self.settings["postgresql.db-connection-string"]')
+        run('python setup.py test %s' % test_case)
+
+#    sudo('dropdb authoring-test', user='postgres')
+#    sudo('createdb -O cnxauthoring authoring-test', user='postgres')
+#    with cd('cnx-authoring/python3'):
+#        run('./bin/pip install -e ../../cnx-epub')
+#        run('./bin/pip install -e ../../cnx-query-grammar')
+#        run('rm -rf dist build')
+#        run('./bin/python3 setup.py install')
+#        run('./bin/cnx-authoring-initialize_db testing.ini')
+#        run('./bin/python3 setup.py test %s' % test_case)
 
 def publishing_setup():
     """Set up cnx-publishing
