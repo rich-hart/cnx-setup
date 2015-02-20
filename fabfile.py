@@ -146,8 +146,10 @@ def archive_test(test_case=None):
     """Test cnx-archive
     """
     _archive_test_setup()
+    if test_case:
+        test_case = '-s {}'.format(test_case)
     with cd('cnx-archive'):
-        return run('python -m unittest %s' % (test_case or 'discover'), warn_only=True)
+        return run('python setup.py test {}'.format(test_case or ''), warn_only=True)
 
 def query_setup():
     """Set up cnx-query-grammar
