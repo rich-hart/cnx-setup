@@ -237,7 +237,7 @@ def webview_setup():
 def webview_run():
     """Run webview
     """
-    sudo('rm /etc/nginx/sites-enabled/*')
+    sudo('rm /etc/nginx/sites-enabled/webview')
     sudo('ln -s /etc/nginx/sites-available/webview /etc/nginx/sites-enabled/webview')
     sudo('/etc/init.d/nginx restart')
 
