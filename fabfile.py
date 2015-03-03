@@ -121,11 +121,13 @@ def archive_setup(clone_url=None, sha=None, force_clone=False):
         sudo('python setup.py install')
         run('cnx-archive-initdb --with-example-data development.ini')
 
-def archive_run():
+def archive_run(bg=''):
     """Run cnx-archive
     """
+    if bg:
+        bg = ' start'
     with cd('cnx-archive'):
-        run('paster serve development.ini')
+        run('paster serve development.ini {}'.format(bg))
 
 def _archive_test_setup():
     if _postgres_db_exists('cnxarchive-testing'):
