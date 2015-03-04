@@ -88,23 +88,21 @@ def run_cnxupgrade(upgrade='to_html', filename=None):
         cmd += ' --force'
     run(cmd)
 
-def archive_setup(clone_url=None, sha=None, force_clone=False):
+def archive_setup(https=''):
     """Set up cnx-archive
     """
     _setup()
     _install_postgresql()
     _install_plxslt()
-    query_setup()
-    upgrade_setup()
+    query_setup(https=https)
+    upgrade_setup(https=https)
     if clone_url is None:
         clone_url = 'https://github.com/Connexions/cnx-archive.git'
-    if force_clone:
-        sudo('rm -rf cnx-archive')
     if not fabric.contrib.files.exists('cnx-archive'):
-        run('git clone %s' % clone_url)
-        if sha is not None:
-            with cd('cnx-archive'):
-                run('git reset --hard %s' % sha)
+        if not https:
+            run('git clone git@github:Connexions/cnx-archive.git')
+        if https:
+            run('git clone https://github.com/Connexions/cnx-archive.git')
 
     if not _postgres_user_exists('cnxarchive'):
         prompts = []
@@ -153,11 +151,14 @@ def archive_test(test_case=None):
     with cd('cnx-archive'):
         return run('python setup.py test {}'.format(test_case or ''), warn_only=True)
 
-def query_setup():
+def query_setup(https=''):
     """Set up cnx-query-grammar
     """
     if not fabric.contrib.files.exists('cnx-query-grammar'):
-        run('git clone https://github.com/Connexions/cnx-query-grammar.git')
+        if https:
+            run('git clone https://github.com/Connexions/cnx-query-grammar.git')
+        else:
+            run('git clone git@github.com:Connexions/cnx-query-grammar.git')
     with cd('cnx-query-grammar'):
         sudo('python setup.py install')
 
@@ -174,13 +175,16 @@ def query_test(test_case=None):
             test_case = 'discover'
         run('python -m unittest %s' % test_case)
 
-def upgrade_setup():
+def upgrade_setup(https=''):
     """Set up cnx-upgrade
     """
     sudo('apt-get install --yes libxslt1-dev libxml2-dev')
     if not fabric.contrib.files.exists('cnx-upgrade'):
-        run('git clone https://github.com/Connexions/cnx-upgrade.git')
-    cnxmlutils_setup()
+        if https:
+            run('git clone https://github.com/Connexions/cnx-upgrade.git')
+        else:
+            run('git clone git@github.com:Connexions/cnx-upgrade.git')
+    cnxmlutils_setup(https=https)
     with cd('cnx-upgrade'):
         sudo('python setup.py install')
 
@@ -218,12 +222,15 @@ def _configure_webview_nginx():
     put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
     fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', run('pwd'), use_sudo=True)
 
-def webview_setup():
+def webview_setup(https=''):
     """Set up webview
     """
     _setup()
     if not fabric.contrib.files.exists('webview'):
-        run('git clone https://github.com/Connexions/webview.git')
+        if https:
+            run('git clone https://github.com/Connexions/webview.git')
+        else:
+            run('git clone git@github.com:Connexions/webview.git')
     _install_nodejs()
     sudo('apt-get install --yes npm')
     sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
@@ -437,11 +444,14 @@ def repo_test(test_type='wsgi'):
     with cd('rhaptos2.repo/'):
         sudo('python setup.py test --test-type={}'.format(test_type))
 
-def cnxmlutils_setup():
+def cnxmlutils_setup(https=''):
     """Set up rhaptos.cnxmlutils
     """
     if not fabric.contrib.files.exists('rhaptos.cnxmlutils'):
-        run('git clone git@github.com:Connexions/rhaptos.cnxmlutils.git')
+        if https:
+            run('git clone https://github.com/Connexions/rhaptos.cnxmlutils.git')
+        else:
+            run('git clone git@github.com:Connexions/rhaptos.cnxmlutils.git')
     with cd('rhaptos.cnxmlutils'):
         sudo('python setup.py install')
 
@@ -455,11 +465,14 @@ def cnxmlutils_test(test_case=''):
         sudo('python setup.py develop')
         sudo('python setup.py test %s' % test_case)
 
-def cnxepub_setup():
+def cnxepub_setup(https=''):
     """Set up cnx-epub
     """
     if not fabric.contrib.files.exists('cnx-epub'):
-        run('git clone git@github.com:Connexions/cnx-epub.git')
+        if https:
+            run('git clone https://github.com/Connexions/cnx-epub.git')
+        else:
+            run('git clone git@github.com:Connexions/cnx-epub.git')
     with cd('cnx-epub'):
         _setup_virtualenv()
         run('./bin/python setup.py install')
@@ -497,12 +510,15 @@ def draft_setup():
             run('../bin/python setup.py install')
         run('./bin/python setup.py install')
 
-def authoring_setup():
+def authoring_setup(https=''):
     """Set up cnx-authoring
     """
     _setup()
     if not fabric.contrib.files.exists('cnx-authoring'):
-        run('git clone git@github.com:Connexions/cnx-authoring.git')
+        if https:
+            run('git clone https://github.com/Connexions/cnx-authoring.git')
+        else:
+            run('git clone git@github.com:Connexions/cnx-authoring.git')
     with cd('cnx-authoring'):
         _setup_virtualenv()
         if not fabric.contrib.files.exists('python3'):
@@ -582,12 +598,15 @@ def authoring_test(test_case=''):
 #        run('./bin/cnx-authoring-initialize_db testing.ini')
 #        run('./bin/python3 setup.py test %s' % test_case)
 
-def publishing_setup():
+def publishing_setup(https=''):
     """Set up cnx-publishing
     """
     _setup()
     if not fabric.contrib.files.exists('cnx-publishing'):
-        run('git clone git@github.com:Connexions/cnx-publishing.git')
+        if https:
+            run('git clone https://github.com/Connexions/cnx-publishing.git')
+        else:
+            run('git clone git@github.com:Connexions/cnx-publishing.git')
 
     with cd('cnx-epub'):
         sudo('python setup.py install')
