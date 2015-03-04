@@ -96,8 +96,6 @@ def archive_setup(https=''):
     _install_plxslt()
     query_setup(https=https)
     upgrade_setup(https=https)
-    if clone_url is None:
-        clone_url = 'https://github.com/Connexions/cnx-archive.git'
     if not fabric.contrib.files.exists('cnx-archive'):
         if not https:
             run('git clone git@github:Connexions/cnx-archive.git')
