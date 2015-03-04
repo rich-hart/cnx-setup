@@ -231,11 +231,11 @@ def webview_setup(https=''):
             run('git clone git@github.com:Connexions/webview.git')
     _install_nodejs()
     sudo('apt-get install --yes npm')
-    sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
+    sudo('rm -rf ~/tmp ~/.npm') # ~/tmp is needed for npm
     sudo('npm install -g grunt-cli bower')
     # remove ~/tmp after a system npm install as ~/tmp is owned by root and
     # cannot be written as the user in the next step
-    sudo('rm -rf ~/tmp')
+    sudo('rm -rf ~/tmp ~/.npm')
     with cd('webview'):
         run('npm install')
     _configure_webview_nginx()
