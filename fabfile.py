@@ -207,13 +207,13 @@ def _install_nodejs():
     if run('which node', warn_only=True):
         return
     sudo('apt-get install --yes make g++')
-    run('wget http://nodejs.org/dist/v0.10.17/node-v0.10.17.tar.gz')
-    run('tar xf node-v0.10.17.tar.gz')
-    with cd('node-v0.10.17'):
+    run('wget http://nodejs.org/dist/v0.12.0/node-v0.12.0.tar.gz')
+    run('tar xf node-v0.12.0.tar.gz')
+    with cd('node-v0.12.0'):
         run('./configure')
         run('make')
         sudo('make install')
-    run('rm -rf node-v0.10.17*')
+    run('rm -rf node-v0.12.0*')
 
 def _configure_webview_nginx():
     sudo('apt-get install --yes nginx')
