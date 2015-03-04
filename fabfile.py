@@ -121,7 +121,7 @@ def archive_run(bg=''):
     """Run cnx-archive
     """
     if bg:
-        bg = ' start'
+        bg = ' --daemon'
     with cd('cnx-archive'):
         run('paster serve development.ini {}'.format(bg))
 
