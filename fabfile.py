@@ -98,7 +98,7 @@ def archive_setup(https=''):
     upgrade_setup(https=https)
     if not fabric.contrib.files.exists('cnx-archive'):
         if not https:
-            run('git clone git@github:Connexions/cnx-archive.git')
+            run('git clone git@github.com:Connexions/cnx-archive.git')
         if https:
             run('git clone https://github.com/Connexions/cnx-archive.git')
 
