@@ -265,7 +265,6 @@ def webview_update():
     with cd('webview'):
         run('npm install')
         run('npm update')
-        run('bower update')
     _configure_webview_nginx()
 
 def exports_setup():
