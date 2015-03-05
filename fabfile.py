@@ -34,7 +34,7 @@ def _postgres_user_exists(username):
     return '1' in sudo('psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname=\'%s\'"' % username, user='postgres')
 
 def _postgres_db_exists(dbname):
-    return dbname in sudo('psql -l --pset="pager=off"', user='postgres')
+    return ' {} '.format(dbname) in sudo('psql -l --pset="pager=off"', user='postgres')
 
 def _install_plxslt():
     sudo('apt-get install --yes libxml2-dev libxslt-dev pkg-config')
@@ -512,6 +512,11 @@ def authoring_setup(https=''):
             run('git clone https://github.com/Connexions/cnx-authoring.git')
         else:
             run('git clone git@github.com:Connexions/cnx-authoring.git')
+    if not _postgres_user_exists('cnxauthoring'):
+        sudo('psql -d postgres -c "CREATE USER cnxauthoring WITH SUPERUSER PASSWORD \'cnxauthoring\'"', user='postgres')
+    if _postgres_db_exists('authoring '):
+        sudo('dropdb authoring', user='postgres')
+    sudo('createdb -O cnxauthoring authoring', user='postgres')
     with cd('cnx-authoring'):
         _setup_virtualenv()
         if not fabric.contrib.files.exists('python3'):
