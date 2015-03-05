@@ -535,12 +535,14 @@ def authoring_setup(https=''):
         with cd('python3'):
             run('./bin/python3 setup.py install')
 
-def authoring_run():
+def authoring_run(bg=''):
     """Run cnx-authoring
     """
+    if bg:
+        bg = ' --daemon'
     with cd('cnx-authoring'):
         run('./bin/python setup.py install')
-        run('./bin/pserve development.ini')
+        run('./bin/pserve development.ini {}'.format(bg))
 
 def authoring_test(test_case=''):
     """Run cnx-authoring tests
@@ -607,15 +609,17 @@ def publishing_setup(https=''):
         sudo('python setup.py install')
         run('cnx-publishing-initdb development.ini')
 
-def publishing_run():
+def publishing_run(bg=''):
     """Run cnx-publishing
     """
     with cd('cnx-epub'):
         sudo('python setup.py install')
 
+    if bg:
+        bg = ' --daemon'
     with cd('cnx-publishing'):
         sudo('python setup.py install')
-        run('paster serve development.ini')
+        run('paster serve development.ini {}'.format(bg))
 
 def publishing_test(test_case=''):
     """Run cnx-publishing tests
