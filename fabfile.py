@@ -103,11 +103,7 @@ def archive_setup(https=''):
             run('git clone https://github.com/Connexions/cnx-archive.git')
 
     if not _postgres_user_exists('cnxarchive'):
-        prompts = []
-        prompts += fexpect.expect('Enter password for new role:', 'cnxarchive')
-        prompts += fexpect.expect('Enter it again:', 'cnxarchive')
-        with fexpect.expecting(prompts):
-            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
+        sudo('psql -d postgres -c "CREATE USER cnxarchive WITH SUPERUSER PASSWORD \'cnxarchive\'"', user='postgres')
 
     if _postgres_db_exists('cnxarchive'):
         sudo('dropdb cnxarchive', user='postgres')
@@ -550,11 +546,7 @@ def authoring_test(test_case=''):
     """Run cnx-authoring tests
     """
     if not _postgres_user_exists('cnxauthoring'):
-        prompts = []
-        prompts += fexpect.expect('Enter password for new role:', 'cnxauthoring')
-        prompts += fexpect.expect('Enter it again:', 'cnxauthoring')
-        with fexpect.expecting(prompts):
-            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxauthoring', user='postgres')
+        sudo('psql -d postgres -c "CREATE USER cnxauthoring WITH SUPERUSER PASSWORD \'cnxauthoring\'"', user='postgres')
     if _postgres_db_exists('authoring-test'):
         sudo('dropdb authoring-test', user='postgres')
     sudo('createdb -O cnxauthoring authoring-test', user='postgres')
@@ -629,11 +621,7 @@ def publishing_test(test_case=''):
     """Run cnx-publishing tests
     """
     if not _postgres_user_exists('cnxarchive'):
-        prompts = []
-        prompts += fexpect.expect('Enter password for new role:', 'cnxarchive')
-        prompts += fexpect.expect('Enter it again:', 'cnxarchive')
-        with fexpect.expecting(prompts):
-            fexpect.sudo('createuser --no-createdb --no-createrole --superuser --pwprompt cnxarchive', user='postgres')
+        sudo('psql -d postgres -c "CREATE USER cnxarchive WITH SUPERUSER PASSWORD \'cnxarchive\'"', user='postgres')
 
     if _postgres_db_exists('cnxarchive-testing'):
         sudo('dropdb cnxarchive-testing', user='postgres')
