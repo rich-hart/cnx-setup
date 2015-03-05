@@ -12,7 +12,7 @@ def _setup():
     """Install packages necessary for the connexion projects
     """
     #sudo('apt-get update')
-    sudo('apt-get install --yes git python-setuptools python-dev')
+    sudo('apt-get install --yes git python-setuptools python-dev python3-dev')
 
 def _setup_virtualenv(with_python3=False):
     """Install virtualenv and set up virtualenv in the current directory
