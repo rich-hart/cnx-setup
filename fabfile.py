@@ -519,26 +519,28 @@ def authoring_setup(https=''):
     sudo('createdb -O cnxauthoring authoring', user='postgres')
     with cd('cnx-authoring'):
         _setup_virtualenv()
-        if not fabric.contrib.files.exists('python3'):
-            run('mkdir python3')
-            with cd('python3'):
-                _setup_virtualenv(with_python3=True)
-                run('ln -s ../development.ini')
-                run('ln -s ../setup.py')
-                run('ln -s ../cnxauthoring')
-                run('ln -s ../testing.ini')
+#        if not fabric.contrib.files.exists('python3'):
+#            run('mkdir python3')
+#            with cd('python3'):
+#                _setup_virtualenv(with_python3=True)
+#                run('ln -s ../development.ini')
+#                run('ln -s ../setup.py')
+#                run('ln -s ../cnxauthoring')
+#                run('ln -s ../testing.ini')
 
+    query_setup(https=https)
     with cd('cnx-query-grammar'):
-        run('~/cnx-authoring/bin/python setup.py install')
-        run('~/cnx-authoring/python3/bin/python3 setup.py install')
+        sudo('python setup.py install')
+        #run('~/cnx-authoring/python3/bin/python3 setup.py install')
+    cnxepub_setup(https=https)
     with cd('cnx-epub'):
-        run('~/cnx-authoring/bin/python setup.py install')
-        run('~/cnx-authoring/python3/bin/python3 setup.py install')
+        sudo('python setup.py install')
+        #run('~/cnx-authoring/python3/bin/python3 setup.py install')
 
     with cd('cnx-authoring'):
         run('./bin/python setup.py install')
-        with cd('python3'):
-            run('./bin/python3 setup.py install')
+#        with cd('python3'):
+#            run('./bin/python3 setup.py install')
 
 def authoring_run(bg=''):
     """Run cnx-authoring
