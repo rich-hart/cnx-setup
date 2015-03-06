@@ -549,6 +549,8 @@ def authoring_run(bg=''):
         bg = ' --daemon'
     with cd('cnx-authoring'):
         run('./bin/python setup.py install')
+        if fabric.contrib.files.exists('pyramid.pid'):
+            run('kill `cat pyramid.pid`', warn_only=True)
         run('./bin/pserve development.ini {}'.format(bg))
 
 def authoring_test(test_case=''):
@@ -626,6 +628,8 @@ def publishing_run(bg=''):
         bg = ' --daemon'
     with cd('cnx-publishing'):
         sudo('python setup.py install')
+        if fabric.contrib.files.exists('paster.pid'):
+            run('kill `cat paster.pid`', warn_only=True)
         run('paster serve development.ini {}'.format(bg))
 
 def publishing_test(test_case=''):
