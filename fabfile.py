@@ -137,6 +137,8 @@ def _archive_test_setup():
     if _postgres_db_exists('oscaccounts-testing'):
         sudo('dropdb oscaccounts-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
+    if not _postgres_user_exists('accounts'):
+        sudo('psql -d postgres -c "CREATE USER accounts WITH SUPERUSER PASSWORD \'accounts\'"', user='postgres')
     sudo('createdb -O accounts oscaccounts-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
     with cd('rhaptos.cnxmlutils'):
