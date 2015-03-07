@@ -48,6 +48,15 @@ def _install_plxslt():
 def _install_mongodb():
     sudo('apt-get install --yes mongodb')
 
+def plpydbapi_setup(https=''):
+    if not fabric.contrib.files.exists('plpydbapi'):
+        if https:
+            run('git clone -b bug-fixes https://github.com/Connexions/plpydbapi.git')
+        else:
+            run('git clone -b bug-fixes git@github.com:Connexions/plpydbapi.git')
+    with cd('plpydbapi'):
+        sudo('python setup.py install')
+
 def archive_setup_real_data():
     """Set up cnxarchive database with real data
     """
@@ -96,6 +105,7 @@ def archive_setup(https=''):
     _install_plxslt()
     query_setup(https=https)
     upgrade_setup(https=https)
+    plpydbapi_setup(https=https)
     if not fabric.contrib.files.exists('cnx-archive'):
         if not https:
             run('git clone git@github.com:Connexions/cnx-archive.git')
@@ -131,8 +141,8 @@ def _archive_test_setup():
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
     with cd('rhaptos.cnxmlutils'):
         sudo('python setup.py install')
-#   with cd('plpydbapi'):
-#       sudo('python setup.py install')
+    with cd('plpydbapi'):
+        sudo('python setup.py install')
     with cd('cnx-archive'):
         sudo('python setup.py install')
 
@@ -612,6 +622,7 @@ def publishing_setup(https=''):
         else:
             run('git clone git@github.com:Connexions/cnx-publishing.git')
 
+    cnxepub_setup(https=https)
     with cd('cnx-epub'):
         sudo('python setup.py install')
 
