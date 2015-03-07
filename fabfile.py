@@ -542,6 +542,10 @@ def authoring_setup(https=''):
 #        with cd('python3'):
 #            run('./bin/python3 setup.py install')
 
+def authoring_setup_db():
+    with cd('cnx-authoring'):
+        run('./bin/cnx-authoring-initialize_db development.ini')
+
 def authoring_run(bg=''):
     """Run cnx-authoring
     """
