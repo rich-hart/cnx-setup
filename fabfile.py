@@ -129,6 +129,9 @@ def archive_run(bg=''):
     if bg:
         bg = ' --daemon'
     with cd('cnx-archive'):
+        sudo('python setup.py install')
+        if fabric.contrib.files.exists('paster.pid'):
+            run('kill `cat paster.pid`', warn_only=True)
         run('paster serve development.ini {}'.format(bg))
 
 def _archive_test_setup():
