@@ -127,11 +127,12 @@ def archive_run(bg=''):
     """Run cnx-archive
     """
     if bg:
-        bg = ' --daemon'
+        bg = 'start; sleep 1'
     with cd('cnx-archive'):
         sudo('python setup.py install')
         if fabric.contrib.files.exists('paster.pid'):
             run('kill `cat paster.pid`', warn_only=True)
+            run('rm -f paster.pid')
         run('paster serve development.ini {}'.format(bg))
 
 def _archive_test_setup():
@@ -565,11 +566,12 @@ def authoring_run(bg=''):
     """Run cnx-authoring
     """
     if bg:
-        bg = ' --daemon'
+        bg = 'start; sleep 1'
     with cd('cnx-authoring'):
         run('./bin/python setup.py install')
         if fabric.contrib.files.exists('pyramid.pid'):
             run('kill `cat pyramid.pid`', warn_only=True)
+            run('rm -f pyramid.pid')
         run('./bin/pserve development.ini {}'.format(bg))
 
 def authoring_test(test_case=''):
@@ -645,11 +647,12 @@ def publishing_run(bg=''):
         sudo('python setup.py install')
 
     if bg:
-        bg = ' --daemon'
+        bg = 'start; sleep 1'
     with cd('cnx-publishing'):
         sudo('python setup.py install')
         if fabric.contrib.files.exists('paster.pid'):
             run('kill `cat paster.pid`', warn_only=True)
+            run('rm -f paster.pid')
         run('paster serve development.ini {}'.format(bg))
 
 def publishing_test(test_case=''):
