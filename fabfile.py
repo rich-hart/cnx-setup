@@ -55,7 +55,7 @@ def plpydbapi_setup(https=''):
         else:
             run('git clone -b bug-fixes git@github.com:Connexions/plpydbapi.git')
     with cd('plpydbapi'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
 def archive_setup_real_data():
     """Set up cnxarchive database with real data
@@ -83,9 +83,9 @@ def archive_setup_real_data():
 
 def run_cnxupgrade(upgrade='to_html', filename=None):
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('cnx-upgrade'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
     cmd = 'cnx-upgrade %s' % upgrade
     query = os.getenv('ID_SELECT_QUERY')
@@ -120,7 +120,7 @@ def archive_setup(https=''):
     sudo('createdb -O cnxarchive cnxarchive', user='postgres')
     sudo('createlang plpythonu cnxarchive', user='postgres')
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         run('cnx-archive-initdb --with-example-data development.ini')
 
 def archive_run(bg=''):
@@ -129,7 +129,7 @@ def archive_run(bg=''):
     if bg:
         bg = 'start; sleep 1'
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         if fabric.contrib.files.exists('paster.pid'):
             run('kill `cat paster.pid`', warn_only=True)
             run('rm -f paster.pid')
@@ -146,11 +146,11 @@ def _archive_test_setup():
     sudo('createdb -O accounts oscaccounts-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
     with cd('rhaptos.cnxmlutils'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('plpydbapi'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
 def archive_test(test_case=None):
     """Test cnx-archive
@@ -159,7 +159,7 @@ def archive_test(test_case=None):
     if test_case:
         test_case = '-s {}'.format(test_case)
     with cd('cnx-archive'):
-        return run('python setup.py test {}'.format(test_case or ''), warn_only=True)
+        return sudo('python setup.py test {}'.format(test_case or ''), warn_only=True)
 
 def query_setup(https=''):
     """Set up cnx-query-grammar
@@ -170,7 +170,7 @@ def query_setup(https=''):
         else:
             run('git clone git@github.com:Connexions/cnx-query-grammar.git')
     with cd('cnx-query-grammar'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
 def query_run(args):
     """Run the cnx-query-grammar script
@@ -196,7 +196,7 @@ def upgrade_setup(https=''):
             run('git clone git@github.com:Connexions/cnx-upgrade.git')
     cnxmlutils_setup(https=https)
     with cd('cnx-upgrade'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
 def upgrade_test(test_case=None):
     """Run tests in cnx-upgrade
@@ -207,7 +207,7 @@ def upgrade_test(test_case=None):
         test_case = ''
     _archive_test_setup()
     with cd('cnx-upgrade'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         with shell_env(DB_CONNECTION_STRING=
                 'dbname=cnxarchive-testing user=cnxarchive password=cnxarchive'
                 ' host=localhost port=5432'):
@@ -347,7 +347,7 @@ def user_setup():
     if not fabric.contrib.files.exists('velruse'):
         run('git clone -b cnx-master https://github.com/pumazi/velruse.git')
         with cd('velruse'):
-            sudo('python setup.py install')
+            sudo('python setup.py develop')
     _install_nodejs()
     sudo('apt-get install --yes npm')
     sudo('rm -rf ~/tmp') # ~/tmp is needed for npm
@@ -361,7 +361,7 @@ def user_setup():
         # change velruse to use 1.0.3 which is the version from pumazmi/veruse
         if not fabric.contrib.files.contains('setup.py', 'velruse==1.0.3'):
             fabric.contrib.files.sed('setup.py', 'velruse', 'velruse==1.0.3')
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         # httplib2 top_level.txt is not readable by the user for some reason
         # (while other top_level.txt are).  This causes initialize_cnx-user_db
         # to fail with IOError permission denied
@@ -372,14 +372,14 @@ def user_run():
     """Run cnx-user
     """
     with cd('cnx-user'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         run('pserve development.ini')
 
 def user_test(test_case=None):
     """Run tests for cnx-user
     """
     with cd('cnx-user'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         run('python -m unittest %s' % (test_case or 'discover',))
 
 def repo_setup():
@@ -407,12 +407,12 @@ def repo_setup():
     if not fabric.contrib.files.exists('rhaptos2.common'):
         run('git clone git@github.com:Connexions/rhaptos2.common.git')
     with cd('rhaptos2.common'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
     if not fabric.contrib.files.exists('rhaptos2.repo'):
         run('git clone -b fix-install git@github.com:Connexions/rhaptos2.repo.git')
     with cd('rhaptos2.repo'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         if fabric.contrib.files.exists('repo-error.log'):
             sudo('chown karen:karen repo-error.log')
         sudo('rhaptos2repo-initdb develop.ini')
@@ -443,7 +443,7 @@ def _repo_test_setup():
     sudo('createdb -O rhaptos2repo rhaptos2repo-testing', user='postgres')
     with cd('rhaptos2.repo'):
         sudo('rm -rf build')
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         sudo('rhaptos2repo-initdb testing.ini')
 
 def repo_test(test_type='wsgi'):
@@ -462,7 +462,7 @@ def cnxmlutils_setup(https=''):
         else:
             run('git clone git@github.com:Connexions/rhaptos.cnxmlutils.git')
     with cd('rhaptos.cnxmlutils'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
 def cnxmlutils_test(test_case=''):
     """Run rhaptos.cnxmlutils tests
@@ -470,7 +470,6 @@ def cnxmlutils_test(test_case=''):
     if test_case:
         test_case = '-s %s' % test_case
     with cd('rhaptos.cnxmlutils'):
-        sudo('python setup.py install')
         sudo('python setup.py develop')
         sudo('python setup.py test %s' % test_case)
 
@@ -484,14 +483,14 @@ def cnxepub_setup(https=''):
             run('git clone git@github.com:Connexions/cnx-epub.git')
     with cd('cnx-epub'):
         _setup_virtualenv()
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         if not fabric.contrib.files.exists('python3'):
             run('mkdir python3')
             with cd('python3'):
                 run('ln -sf ../setup.py')
                 run('ln -sf ../cnxepub')
                 _setup_virtualenv(with_python3=True)
-                run('./bin/python3 setup.py install')
+                run('./bin/python3 setup.py develop')
 
 def cnxepub_test(test_case=''):
     """Run cnx-epub tests
@@ -499,10 +498,10 @@ def cnxepub_test(test_case=''):
     if test_case:
         test_case = '-s %s' % test_case
     with cd('cnx-epub'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         run('./bin/python setup.py test %s' % test_case)
         with cd('python3'):
-            run('./bin/python3 setup.py install')
+            run('./bin/python3 setup.py develop')
             run('./bin/python3 setup.py test %s' % test_case)
 
 def draft_setup():
@@ -516,8 +515,8 @@ def draft_setup():
         if not fabric.contrib.files.exists('requests-toolbelt'):
             run('git clone https://github.com/sigmavirus24/requests-toolbelt.git')
         with cd('requests-toolbelt'):
-            run('../bin/python setup.py install')
-        run('./bin/python setup.py install')
+            run('../bin/python setup.py develop')
+        run('./bin/python setup.py develop')
 
 def authoring_setup(https=''):
     """Set up cnx-authoring
@@ -546,17 +545,17 @@ def authoring_setup(https=''):
 
     query_setup(https=https)
     with cd('cnx-query-grammar'):
-        sudo('python setup.py install')
-        #run('~/cnx-authoring/python3/bin/python3 setup.py install')
+        sudo('python setup.py develop')
+        #run('~/cnx-authoring/python3/bin/python3 setup.py develop')
     cnxepub_setup(https=https)
     with cd('cnx-epub'):
-        sudo('python setup.py install')
-        #run('~/cnx-authoring/python3/bin/python3 setup.py install')
+        sudo('python setup.py develop')
+        #run('~/cnx-authoring/python3/bin/python3 setup.py develop')
 
     with cd('cnx-authoring'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
 #        with cd('python3'):
-#            run('./bin/python3 setup.py install')
+#            run('./bin/python3 setup.py develop')
 
 def authoring_setup_db():
     with cd('cnx-authoring'):
@@ -568,7 +567,7 @@ def authoring_run(bg=''):
     if bg:
         bg = 'start; sleep 1'
     with cd('cnx-authoring'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         if fabric.contrib.files.exists('pyramid.pid'):
             run('kill `cat pyramid.pid`', warn_only=True)
             run('rm -f pyramid.pid')
@@ -585,20 +584,20 @@ def authoring_test(test_case=''):
     if test_case:
         test_case = '-s %s' % test_case
     with cd('cnx-query-grammar'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('cnx-epub'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('rhaptos.cnxmlutils'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('plpydbapi'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     _archive_test_setup()
     with cd('cnx-publishing'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('cnx-authoring'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         run('cnx-authoring-initialize_db cnxauthoring/tests/testing.ini')
         # conn.dsn doesn't work if the database requires password
         # authentication
@@ -615,7 +614,7 @@ def authoring_test(test_case=''):
 #        run('./bin/pip install -e ../../cnx-epub')
 #        run('./bin/pip install -e ../../cnx-query-grammar')
 #        run('rm -rf dist build')
-#        run('./bin/python3 setup.py install')
+#        run('./bin/python3 setup.py develop')
 #        run('./bin/cnx-authoring-initialize_db testing.ini')
 #        run('./bin/python3 setup.py test %s' % test_case)
 
@@ -631,25 +630,25 @@ def publishing_setup(https=''):
 
     cnxepub_setup(https=https)
     with cd('cnx-epub'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
     with cd('cnx-publishing'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         run('cnx-publishing-initdb development.ini')
 
 def publishing_run(bg=''):
     """Run cnx-publishing
     """
     with cd('cnx-epub'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
     if bg:
         bg = 'start; sleep 1'
     with cd('cnx-publishing'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
         if fabric.contrib.files.exists('paster.pid'):
             run('kill `cat paster.pid`', warn_only=True)
             run('rm -f paster.pid')
@@ -669,14 +668,14 @@ def publishing_test(test_case=''):
         test_case = '-s %s' % test_case
 
     with cd('cnx-epub'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
     with cd('cnx-archive'):
-        sudo('python setup.py install')
+        sudo('python setup.py develop')
 
     with cd('cnx-publishing'):
         sudo('rm -rf dist build')
-        sudo('python setup.py install')
-        run('python setup.py test %s' % test_case)
+        sudo('python setup.py develop')
+        sudo('python setup.py test %s' % test_case)
         #run('python -m unittest %s' % (test_case or 'discover'))
 
 def _install_pybit_dependencies():
@@ -708,14 +707,14 @@ def acmeio_setup():
         sudo('psql pybit -c \'\\i sql_additions.sql\'', user='postgres')
         _setup_virtualenv()
         run('./bin/pip install -e ../pybit')
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
 
 def acmeio_test(test_case=''):
     """Run acmeio tests"""
     if test_case:
         test_case = '-s %s' % test_case
     with cd('acmeio'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         run('./bin/pserve production.ini start')
         time.sleep(5)
         run('./bin/python setup.py test %s' % test_case, warn_only=True)
@@ -724,7 +723,7 @@ def acmeio_test(test_case=''):
 def acmeio_run():
     """Run acmeio"""
     with cd('acmeio'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         run('./bin/pserve production.ini')
 
 def buildout_setup():
@@ -772,12 +771,12 @@ def roadrunners_setup():
         fabric.contrib.files.sed(
                 'test.ini', '^pdf-generator = .*',
                 'pdf-generator = {}'.format(run('which prince')))
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
 
 def roadrunners_test():
     """Run roadrunners tests"""
     with cd('roadrunners'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         run('./bin/python setup.py test')
 
 def coyote_setup():
@@ -789,7 +788,7 @@ def coyote_setup():
     with cd('coyote'):
         _setup_virtualenv()
         run('./bin/pip install -e ../pybit')
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
 
 def rhaptosprint_setup():
     """Set up Products.RhaptosPrint"""
@@ -801,7 +800,7 @@ def rhaptosprint_setup():
         _setup_virtualenv()
         sudo('apt-get install --yes libjpeg62-dev')
         run('./bin/pip install Pillow')
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
 
 def coyote_setup():
     """Set up coyote"""
@@ -813,12 +812,12 @@ def coyote_setup():
         _setup_virtualenv()
         run('./bin/pip install -e ../pybit')
         run('./bin/pip install -e ../acmeio')
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
 
 def coyote_test():
     """Run coyote tests"""
     with cd('coyote'):
-        run('./bin/python setup.py install')
+        run('./bin/python setup.py develop')
         run('./bin/python setup.py test')
 
 def test():
