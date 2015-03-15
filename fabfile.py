@@ -106,6 +106,7 @@ def archive_setup(https=''):
     query_setup(https=https)
     upgrade_setup(https=https)
     plpydbapi_setup(https=https)
+    cnxepub_setup(https=https)
     if not fabric.contrib.files.exists('cnx-archive'):
         if not https:
             run('git clone git@github.com:Connexions/cnx-archive.git')
@@ -552,6 +553,7 @@ def authoring_setup(https=''):
     cnxepub_setup(https=https)
     with cd('cnx-epub'):
         sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
         #run('~/cnx-authoring/python3/bin/python3 setup.py develop')
 
     with cd('cnx-authoring'):
@@ -591,6 +593,7 @@ def authoring_test(test_case=''):
         sudo('pip install -e .')
     with cd('cnx-epub'):
         sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
     with cd('rhaptos.cnxmlutils'):
         sudo('pip install -e .')
     with cd('plpydbapi'):
@@ -602,6 +605,7 @@ def authoring_test(test_case=''):
         sudo('pip install -e .')
     with cd('cnx-authoring'):
         sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
         run('cnx-authoring-initialize_db cnxauthoring/tests/testing.ini')
         # conn.dsn doesn't work if the database requires password
         # authentication
@@ -635,6 +639,7 @@ def publishing_setup(https=''):
     cnxepub_setup(https=https)
     with cd('cnx-epub'):
         sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
 
     with cd('cnx-archive'):
         sudo('pip install -e .')
@@ -648,6 +653,7 @@ def publishing_run(bg=''):
     """
     with cd('cnx-epub'):
         sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
 
     if bg:
         bg = 'start; sleep 1'
@@ -673,6 +679,7 @@ def publishing_test(test_case=''):
 
     with cd('cnx-epub'):
         sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
     with cd('cnx-archive'):
         sudo('pip install -e .')
 
