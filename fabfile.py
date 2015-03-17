@@ -55,6 +55,7 @@ def plpydbapi_setup(https=''):
         else:
             run('git clone -b bug-fixes git@github.com:Connexions/plpydbapi.git')
     with cd('plpydbapi'):
+        sudo('python setup.py install')
         sudo('pip install -e .')
 
 def archive_setup_real_data():
@@ -121,6 +122,7 @@ def archive_setup(https=''):
     sudo('createdb -O cnxarchive cnxarchive', user='postgres')
     sudo('createlang plpythonu cnxarchive', user='postgres')
     with cd('cnx-archive'):
+        sudo('python setup.py install')
         sudo('pip install -e .')
         run('cnx-archive-initdb --with-example-data development.ini')
 
@@ -197,6 +199,7 @@ def upgrade_setup(https=''):
             run('git clone git@github.com:Connexions/cnx-upgrade.git')
     cnxmlutils_setup(https=https)
     with cd('cnx-upgrade'):
+        sudo('python setup.py install')
         sudo('pip install -e .')
 
 def upgrade_test(test_case=None):
@@ -348,6 +351,7 @@ def user_setup():
     if not fabric.contrib.files.exists('velruse'):
         run('git clone -b cnx-master https://github.com/pumazi/velruse.git')
         with cd('velruse'):
+            sudo('python setup.py install')
             sudo('pip install -e .')
     _install_nodejs()
     sudo('apt-get install --yes npm')
@@ -362,6 +366,7 @@ def user_setup():
         # change velruse to use 1.0.3 which is the version from pumazmi/veruse
         if not fabric.contrib.files.contains('setup.py', 'velruse==1.0.3'):
             fabric.contrib.files.sed('setup.py', 'velruse', 'velruse==1.0.3')
+        sudo('python setup.py install')
         sudo('pip install -e .')
         # httplib2 top_level.txt is not readable by the user for some reason
         # (while other top_level.txt are).  This causes initialize_cnx-user_db
@@ -408,6 +413,7 @@ def repo_setup():
     if not fabric.contrib.files.exists('rhaptos2.common'):
         run('git clone git@github.com:Connexions/rhaptos2.common.git')
     with cd('rhaptos2.common'):
+        sudo('python setup.py install')
         sudo('pip install -e .')
 
     if not fabric.contrib.files.exists('rhaptos2.repo'):
@@ -463,6 +469,7 @@ def cnxmlutils_setup(https=''):
         else:
             run('git clone git@github.com:Connexions/rhaptos.cnxmlutils.git')
     with cd('rhaptos.cnxmlutils'):
+        sudo('python setup.py install')
         sudo('pip install -e .')
 
 def cnxmlutils_test(test_case=''):
@@ -484,7 +491,9 @@ def cnxepub_setup(https=''):
             run('git clone git@github.com:Connexions/cnx-epub.git')
     with cd('cnx-epub'):
         _setup_virtualenv()
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
+        sudo('python setup.py install')
         sudo('pip install -e .')
         if not fabric.contrib.files.exists('python3'):
             run('mkdir python3')
@@ -557,7 +566,9 @@ def authoring_setup(https=''):
         #run('~/cnx-authoring/python3/bin/python3 setup.py develop')
 
     with cd('cnx-authoring'):
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
+        sudo('python setup.py install')
         sudo('pip install -e .')
         sudo('git clean -f -x -d build dist *.egg-info')
 #        with cd('python3'):
@@ -645,6 +656,7 @@ def publishing_setup(https=''):
         sudo('pip install -e .')
 
     with cd('cnx-publishing'):
+        sudo('python setup.py install')
         sudo('pip install -e .')
         run('cnx-publishing-initdb development.ini')
 
@@ -718,6 +730,7 @@ def acmeio_setup():
         sudo('psql pybit -c \'\\i sql_additions.sql\'', user='postgres')
         _setup_virtualenv()
         run('./bin/pip install -e ../pybit')
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
 
 def acmeio_test(test_case=''):
@@ -782,6 +795,7 @@ def roadrunners_setup():
         fabric.contrib.files.sed(
                 'test.ini', '^pdf-generator = .*',
                 'pdf-generator = {}'.format(run('which prince')))
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
 
 def roadrunners_test():
@@ -799,6 +813,7 @@ def coyote_setup():
     with cd('coyote'):
         _setup_virtualenv()
         run('./bin/pip install -e ../pybit')
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
 
 def rhaptosprint_setup():
@@ -811,6 +826,7 @@ def rhaptosprint_setup():
         _setup_virtualenv()
         sudo('apt-get install --yes libjpeg62-dev')
         run('./bin/pip install Pillow')
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
 
 def coyote_setup():
@@ -823,6 +839,7 @@ def coyote_setup():
         _setup_virtualenv()
         run('./bin/pip install -e ../pybit')
         run('./bin/pip install -e ../acmeio')
+        run('./bin/python setup.py install')
         run('./bin/pip install -e .')
 
 def coyote_test():
