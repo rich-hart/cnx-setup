@@ -584,11 +584,12 @@ def authoring_run(bg=''):
     if bg:
         bg = 'start; sleep 1'
     with cd('cnx-authoring'):
-        run('./bin/pip install -e .')
+        sudo('pip install -e .')
+        sudo('git clean -f -x -d build dist *.egg-info')
         if fabric.contrib.files.exists('pyramid.pid'):
             run('kill `cat pyramid.pid`', warn_only=True)
             run('rm -f pyramid.pid')
-        run('./bin/pserve development.ini {}'.format(bg))
+        run('pserve development.ini {}'.format(bg))
 
 def authoring_test(test_case=''):
     """Run cnx-authoring tests
