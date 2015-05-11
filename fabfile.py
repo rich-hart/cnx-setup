@@ -25,7 +25,7 @@ def deploy():
 
 #    with shell_env(**sh):
 #    with shell_env("HOME={DEPLOY_DIR}","ipaddr='dev-vm.cnx.org'","DEPLOY_DIR={DEPLOY_DIR}".format(**env)):
-        with cd(env.DEPLOY_DIR):
+        #with cd(env.DEPLOY_DIR):
             #sudo("curl -sL https://deb.nodesource.com/setup | sudo bash -")
             archive_setup(https=True)
             archive_sudo(bg=True)
@@ -33,9 +33,9 @@ def deploy():
             webview_setup(https=True)
 
             # Link webview to local archive
-            sudo("sed -i 's/devarchive.cnx.org/$ipaddr/' $DEPLOY_DIR/webview/src/scripts/settings.js")
-            sudo("sed -i 's/port: 80$/port: 6543/' $DEPLOY_DIR/webview/src/scripts/settings.js")
-            sudo("sudo sed -i 's/archive.cnx.org/localhost:6543/' /etc/nginx/sites-available/webview")
+            #sudo("sed -i 's/devarchive.cnx.org/$ipaddr/' $DEPLOY_DIR/webview/src/scripts/settings.js")
+            #sudo("sed -i 's/port: 80$/port: 6543/' $DEPLOY_DIR/webview/src/scripts/settings.js")
+            #sudo("sed -i 's/archive.cnx.org/localhost:6543/' /etc/nginx/sites-available/webview")
         # Link webview to local accounts
         
 
@@ -59,7 +59,7 @@ def _install_postgresql():
         sudo('wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | apt-key add -')
         sudo('apt-get update')
         sudo('apt-get install --yes postgresql-9.3 postgresql-server-dev-9.3 postgresql-client-9.3 postgresql-contrib-9.3 postgresql-plpython-9.3')
-        fabric.contrib.files.sed('/etc/postgresql/9.3/main/pg_hba.conf', '^local\s*all\s*all\s*peer\s*$', 'local all all md5', use_sudo=True)
+        fabric.contrib.files.sed('/etc/postgresql/9.3/main/pg_hba.conf', '^local\s*all\s*all\s*peer\s*$', 'local all all md5', use_sudo=True,shell=True)
         sudo('/etc/init.d/postgresql restart')
 
 def _postgres_user_exists(username):
@@ -265,8 +265,11 @@ def _install_nodejs():
 
 def _configure_webview_nginx():
     sudo('apt-get install --yes nginx')
-    put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
-    fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', sudo('pwd'), use_sudo=True)
+    ######################################
+    # FIXME: WEBVIEW NEEDS A CONFIG FILE #
+    ######################################
+    #put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
+    #fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', sudo('pwd'), use_sudo=True)
 
 def webview_setup(https=''):
     """Set up webview
@@ -280,7 +283,7 @@ def webview_setup(https=''):
     _install_nodejs()
     sudo('apt-get install --yes npm')
     sudo('rm -rf $DEPLOY_DIR/tmp $DEPLOY_DIR/.npm') # $DEPLOY_DIR/tmp is needed for npm
-    sudo('sudo npm install -g grunt-cli bower')
+    sudo('npm install -g grunt-cli bower')
     # remove $DEPLOY_DIR/tmp after a system npm install as $DEPLOY_DIR/tmp is owned by root and
     # cannot be written as the user in the next step
     sudo('rm -rf $DEPLOY_DIR/tmp $DEPLOY_DIR/.npm')
