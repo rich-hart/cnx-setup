@@ -19,7 +19,8 @@ sh={'HOME':env.DEPLOY_DIR,
     'ipaddr':'dev-vm.cnx.org'}
 
 def debug():
-    import ipdb; ipdb.set_trace()
+    pass
+    #import ipdb; ipdb.set_trace()
 def run_script(f=None):
     #debug()
     env.FILE = f 
@@ -29,7 +30,9 @@ def run_script(f=None):
     env.FILE = None
 
 def add_restart_script():
-    run_script('restart_script.sh')
+    with cd(env.DEPLOY_DIR):
+        with shell_env(**sh):
+            run_script('restart_script.sh')
 
 def deploy():
     # Set up Connexions/cnx-archive
