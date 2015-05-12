@@ -10,13 +10,26 @@ env.DEPLOY_DIR = '/opt'
 env.cwd = env.DEPLOY_DIR
 env.use_ssh_config = True
 env.ssh_config_path = '../.ssh_config'
-env.LOCAL_WD = '/Users/openstax/workspace/openstax-setup'
+env.LOCAL_WD = '/Users/openstax/workspace/cnx-setup'
 env.hosts = 'virtual_machine'
 env.ipaddr = 'dev-vm.cnx.org'
 
 sh={'HOME':env.DEPLOY_DIR,
     'DEPLOY_DIR':env.DEPLOY_DIR,
     'ipaddr':'dev-vm.cnx.org'}
+
+def debug():
+    import ipdb; ipdb.set_trace()
+def run_script(f=None):
+    #debug()
+    env.FILE = f 
+    put('{LOCAL_WD}/{FILE}'.format(**env),'{DEPLOY_DIR}/{FILE}'.format(**env),use_sudo=True)
+    sudo("chmod 755 {FILE}".format(**env))
+    sudo("./{FILE}".format(**env))
+    env.FILE = None
+
+def add_restart_script():
+    run_script('restart_script.sh')
 
 def deploy():
     # Set up Connexions/cnx-archive
@@ -31,9 +44,38 @@ def deploy():
             archive_sudo(bg=True)
             # Set up Connexions/webview
             webview_setup(https=True)
+           
+            # Link archive to webview and webview to accounts
+            run_script('archive_webview_account.sh')
+            webview_sudo()
+            
+            # Link publishing to accounts
+            #run_script('publishing_accounts.sh')
+            publishing_setup(https=True)
+            run_script('publishing_accounts.sh')
+           
+            # Set up Connexions/cnx-publishing
+            publishing_sudo(bg=True)
+            
+            authoring_setup(https=True)
+            
+            sudo("cp $DEPLOY_DIR/cnx-authoring/development.ini.example $DEPLOY_DIR/cnx-authoring/development.ini")
 
-            # Link webview to local archive
-            #sudo("sed -i 's/devarchive.cnx.org/$ipaddr/' $DEPLOY_DIR/webview/src/scripts/settings.js")
+            # Link authoring to accounts
+            run_script('authoring_accounts.sh')
+
+            # Link authoring to local webview, archive, publishing
+            run_script('auth_link_web_arc_pub.sh')
+            
+            # Set up authoring db after all the changes in development.ini
+            authoring_setup_db()
+
+            # Start authoring
+            authoring_sudo(bg=True)
+ 
+            #fabric.contrib.files.sed('DEPLOY_DIR/cnx-publishing/development.ini','openstax_accounts.stub = .*','openstax_accounts.stub = false',use_sudo=True,shell=True)
+            
+           
             #sudo("sed -i 's/port: 80$/port: 6543/' $DEPLOY_DIR/webview/src/scripts/settings.js")
             #sudo("sed -i 's/archive.cnx.org/localhost:6543/' /etc/nginx/sites-available/webview")
         # Link webview to local accounts
@@ -266,10 +308,10 @@ def _install_nodejs():
 def _configure_webview_nginx():
     sudo('apt-get install --yes nginx')
     ######################################
-    # FIXME: WEBVIEW NEEDS A CONFIG FILE #
+    # FIXME: what should /path/to be? #
     ######################################
-    #put('webview_nginx.conf', '/etc/nginx/sites-available/webview', use_sudo=True)
-    #fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', sudo('pwd'), use_sudo=True)
+    put('{LOCAL_WD}/webview_nginx.conf'.format(**env), '/etc/nginx/sites-available/webview', use_sudo=True)
+    fabric.contrib.files.sed('/etc/nginx/sites-available/webview', '/path/to', env.DEPLOY_DIR, use_sudo=True,shell=True)
 
 def webview_setup(https=''):
     """Set up webview
