@@ -18,6 +18,40 @@ sh={'HOME':env.DEPLOY_DIR,
     'DEPLOY_DIR':env.DEPLOY_DIR,
     'ipaddr':'dev-vm.cnx.org'}
 
+def deploy():
+    full_setup()
+    run_script('linking_script.sh')
+    full_run()
+
+def full_setup():
+    with cd(env.DEPLOY_DIR):
+        with shell_env(**sh):
+            archive_setup(https=True)
+            webview_setup(https=True)
+            publishing_setup(https=True)
+            authoring_setup(https=True)
+            sudo("cp $DEPLOY_DIR/cnx-authoring/development.ini.example $DEPLOY_DIR/cnx-authoring/development.ini")
+            authoring_setup_db()
+
+def mod_all_configs():
+    with cd(env.DEPLOY_DIR):
+        with shell_env(**sh):
+            run_script('archive_webview_account.sh')
+            run_script('publishing_accounts.sh')
+            run_script('authoring_accounts.sh')
+            run_script('archive_webview_account.sh')
+            run_script('auth_link_web_arc_pub.sh')
+
+
+def full_run():
+    with cd(env.DEPLOY_DIR):
+        with shell_env(**sh):
+            archive_sudo(bg=True)
+            webview_sudo()
+            publishing_sudo(bg=True)
+            authoring_sudo(bg=True)
+ 
+
 def debug():
     pass
     #import ipdb; ipdb.set_trace()
@@ -29,12 +63,73 @@ def run_script(f=None):
     sudo("./{FILE}".format(**env))
     env.FILE = None
 
+def run_script_temp(filename=None):
+    with open(filename,'r') as f:
+        for line in f:
+            line = line.split('\n')
+            line = '\n'.join(line)
+            print(line)
+
 def add_restart_script():
     with cd(env.DEPLOY_DIR):
         with shell_env(**sh):
             run_script('restart_script.sh')
+def deploy_temp():
+    # Set up Connexions/cnx-archive
+    with cd(env.DEPLOY_DIR):
+        with shell_env(**sh):
+            #archive_setup(https=True)
+            #archive_sudo(bg=True)
+            # Set up Connexions/webview
+            webview_setup(https=True)
+           
+            # Link archive to webview and webview to accounts
+            #run_script('archive_webview_account.sh')
+            #webview_sudo()
+            #################
+            # FIXME: for webview to work 
+            #    1.  fix root path in ngnix config 
+            #        /path/to/webview/src -> /opt/webview/src
+            #    2.  install grunt and bower independently.
+            #        sudo bower install --allow-root
+            #        sudo grunt install
+            #        Link archive to webview and webview to accounts
+            #        make sure port is closed by running
+            #    3.  kill port
+            #        sudo fuser -k 80/tcp 
+            #    4.  run 
+            #        sudo grunt nginx:start
+            #        linking scripts cant be run because the
+            #        enviro variables are not being passed on
+            #            
+            ##########            
+            # Link publishing to accounts
+            #run_script('publishing_accounts.sh')
+            #publishing_setup(https=True)
+            #run_script('publishing_accounts.sh')
+           
+            # Set up Connexions/cnx-publishing
+            #publishing_sudo(bg=True)
+            
+            #authoring_setup(https=True)
+            
+            #sudo("cp $DEPLOY_DIR/cnx-authoring/development.ini.example $DEPLOY_DIR/cnx-authoring/development.ini")
 
-def deploy():
+            # Link authoring to accounts
+            #run_script('authoring_accounts.sh')
+
+            # Link authoring to local webview, archive, publishing
+            #run_script('auth_link_web_arc_pub.sh')
+            
+            # Set up authoring db after all the changes in development.ini
+            #authoring_setup_db()
+
+            # Start authoring
+            #authoring_sudo(bg=True)
+
+           
+
+def deploy_old():
     # Set up Connexions/cnx-archive
     with cd(env.DEPLOY_DIR):
         with shell_env(**sh):
@@ -51,7 +146,23 @@ def deploy():
             # Link archive to webview and webview to accounts
             run_script('archive_webview_account.sh')
             webview_sudo()
-            
+            #################
+            # FIXME: for webview to work 
+            #    1.  fix root path in ngnix config 
+            #        /path/to/webview/src -> /opt/webview/src
+            #    2.  install grunt and bower independently.
+            #        sudo bower install --allow-root
+            #        sudo grunt install
+            #        Link archive to webview and webview to accounts
+            #        make sure port is closed by running
+            #    3.  kill port
+            #        sudo fuser -k 80/tcp 
+            #    4.  run 
+            #        sudo grunt nginx:start
+            #        linking scripts cant be run because the
+            #        enviro variables are not being passed on
+            #            
+            ##########            
             # Link publishing to accounts
             #run_script('publishing_accounts.sh')
             publishing_setup(https=True)
@@ -113,13 +224,21 @@ def _postgres_user_exists(username):
 def _postgres_db_exists(dbname):
     return ' {} '.format(dbname) in sudo('psql -l --pset="pager=off"', user='postgres')
 
+# Not finished
+def postgres_db_exists_and_empty(dbname):
+    import ipdb; ipdb.set_trace()
+    result1 = sudo('psql -t -c "select datname from pg_database"')
+    
+    return ' {} '.format(dbname) in sudo('psql -l --pset="pager=off"', user='postgres')
+
+
 def _install_plxslt():
     sudo('apt-get install --yes libxml2-dev libxslt-dev pkg-config')
     sudo('rm -rf plxslt')
     sudo('git clone https://github.com/petere/plxslt.git')
     with cd('plxslt'):
-        sudo('make')
-        sudo('make install')
+        sudo('make --silent ')
+        sudo('make --silent install')
     sudo('rm -rf plxslt')
 
 def _install_mongodb():
@@ -304,8 +423,8 @@ def _install_nodejs():
     sudo('tar xf node-v0.12.0.tar.gz')
     with cd('node-v0.12.0'):
         sudo('./configure')
-        sudo('make')
-        sudo('make install')
+        sudo('make --silent')
+        sudo('make --silent install')
     sudo('rm -rf node-v0.12.0*')
 
 def _configure_webview_nginx():
@@ -328,12 +447,14 @@ def webview_setup(https=''):
     _install_nodejs()
     sudo('apt-get install --yes npm')
     sudo('rm -rf $DEPLOY_DIR/tmp $DEPLOY_DIR/.npm') # $DEPLOY_DIR/tmp is needed for npm
-    sudo('npm install -g grunt-cli bower')
+    sudo('npm install --unsafe-perm -g grunt-cli bower')
     # remove $DEPLOY_DIR/tmp after a system npm install as $DEPLOY_DIR/tmp is owned by root and
     # cannot be written as the user in the next step
     sudo('rm -rf $DEPLOY_DIR/tmp $DEPLOY_DIR/.npm')
     with cd('webview'):
-        sudo('npm install')
+        sudo('bower install --allow-root')
+        sudo('npm install --unsafe-perm')
+        #sudo('grunt install -f')
     _configure_webview_nginx()
     webview_sudo()
 
