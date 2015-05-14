@@ -9,10 +9,13 @@ from ilogue import fexpect
 env.DEPLOY_DIR = '/opt'
 env.cwd = env.DEPLOY_DIR
 env.use_ssh_config = True
-env.ssh_config_path = '../.ssh_config'
+#env.ssh_config_path = '../.ssh_config'
+env.ssh_config_path = '${HOME}/.ssh_config'
 env.LOCAL_WD = '/Users/openstax/workspace/cnx-setup'
-env.hosts = 'virtual_machine'
-env.ipaddr = 'dev-vm.cnx.org'
+#env.hosts = 'virtual_machine'
+#env.ipaddr = 'dev-vm.cnx.org'
+
+VIRTUAL_ENV = False
 
 sh={'HOME':env.DEPLOY_DIR,
     'DEPLOY_DIR':env.DEPLOY_DIR,
@@ -200,7 +203,8 @@ def _setup():
     """Install packages necessary for the connexion projects
     """
     #sudo('apt-get update')
-    sudo('apt-get install --yes git python-setuptools python-dev python3-dev')
+    sudo('apt-get install --yes git python-setuptools python-dev python-pip python3-dev')
+
 
 def _setup_virtualenv(with_python3=False):
     """Install virtualenv and set up virtualenv in the current directory
@@ -219,10 +223,10 @@ def _install_postgresql():
         sudo('/etc/init.d/postgresql restart')
 
 def _postgres_user_exists(username):
-    return '1' in sudo('psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname=\'%s\'"' % username, user='postgres')
-
+    return '1' in sudo('psql template1 -tAc "SELECT 1 FROM pg_roles WHERE rolname=\'%s\'"' % username, user='postgres')
+ 
 def _postgres_db_exists(dbname):
-    return ' {} '.format(dbname) in sudo('psql -l --pset="pager=off"', user='postgres')
+    return ' {} '.format(dbname) in sudo('psql -l --pset="pager=off" template1', user='postgres')
 
 # Not finished
 def postgres_db_exists_and_empty(dbname):
@@ -311,12 +315,12 @@ def archive_setup(https=''):
             sudo('git clone https://github.com/Connexions/cnx-archive.git')
 
     if not _postgres_user_exists('cnxarchive'):
-        sudo('psql -d postgres -c "CREATE USER cnxarchive WITH SUPERUSER PASSWORD \'cnxarchive\'"', user='postgres')
-
+        sudo('psql -d template1 -c "CREATE USER cnxarchive WITH SUPERUSER PASSWORD \'cnxarchive\'"', user='postgres')
     if _postgres_db_exists('cnxarchive'):
         sudo('dropdb cnxarchive', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive', user='postgres')
-    sudo('createlang plpythonu cnxarchive', user='postgres')
+    sudo('createlang plpythonu cnxarchive', user='postgres', warn_only=True)
+
     with cd('cnx-archive'):
         sudo('python setup.py install')
         sudo('pip install -e .')
@@ -341,7 +345,7 @@ def _archive_test_setup():
         sudo('dropdb oscaccounts-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
     if not _postgres_user_exists('accounts'):
-        sudo('psql -d postgres -c "CREATE USER accounts WITH SUPERUSER PASSWORD \'accounts\'"', user='postgres')
+        sudo('psql -d template1 -c "CREATE USER accounts WITH SUPERUSER PASSWORD \'accounts\'"', user='postgres')
     sudo('createdb -O accounts oscaccounts-testing', user='postgres')
     sudo('createlang plpythonu cnxarchive-testing', user='postgres')
     with cd('rhaptos.cnxmlutils'):
@@ -691,9 +695,10 @@ def cnxepub_setup(https=''):
         else:
             sudo('git clone git@github.com:Connexions/cnx-epub.git')
     with cd('cnx-epub'):
-        _setup_virtualenv()
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+           _setup_virtualenv()
+           sudo('./bin/python setup.py install')
+           sudo('./bin/pip install -e .')
         sudo('python setup.py install')
         sudo('pip install -e .')
         if not fabric.contrib.files.exists('python3'):
@@ -710,12 +715,13 @@ def cnxepub_test(test_case=''):
     """
     if test_case:
         test_case = '-s %s' % test_case
-    with cd('cnx-epub'):
-        sudo('./bin/pip install -e .')
-        sudo('./bin/python setup.py test %s' % test_case)
-        with cd('python3'):
-            sudo('./bin/python3 setup.py develop')
-            sudo('./bin/python3 setup.py test %s' % test_case)
+    if VIRTUAL_ENV:
+        with cd('cnx-epub'):
+            sudo('./bin/pip install -e .')
+            sudo('./bin/python setup.py test %s' % test_case)
+            with cd('python3'):
+                sudo('./bin/python3 setup.py develop')
+                sudo('./bin/python3 setup.py test %s' % test_case)
 
 def draft_setup():
     """Set up draft-transforms
@@ -724,12 +730,13 @@ def draft_setup():
     if not fabric.contrib.files.exists('draft-transforms'):
         sudo('git clone git@github.com:Connexions/draft-transforms.git')
     with cd('draft-transforms'):
-        _setup_virtualenv()
-        if not fabric.contrib.files.exists('requests-toolbelt'):
-            sudo('git clone https://github.com/sigmavirus24/requests-toolbelt.git')
-        with cd('requests-toolbelt'):
-            sudo('../bin/pip install -e .')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            _setup_virtualenv()
+            if not fabric.contrib.files.exists('requests-toolbelt'):
+                sudo('git clone https://github.com/sigmavirus24/requests-toolbelt.git')
+            with cd('requests-toolbelt'):
+                sudo('../bin/pip install -e .')
+            sudo('./bin/pip install -e .')
 
 def authoring_setup(https=''):
     """Set up cnx-authoring
@@ -741,7 +748,7 @@ def authoring_setup(https=''):
         else:
             sudo('git clone git@github.com:Connexions/cnx-authoring.git')
     if not _postgres_user_exists('cnxauthoring'):
-        sudo('psql -d postgres -c "CREATE USER cnxauthoring WITH SUPERUSER PASSWORD \'cnxauthoring\'"', user='postgres')
+        sudo('psql -d template1 -c "CREATE USER cnxauthoring WITH SUPERUSER PASSWORD \'cnxauthoring\'"', user='postgres') 
     if _postgres_db_exists('authoring '):
         sudo('dropdb authoring', user='postgres')
     sudo('createdb -O cnxauthoring authoring', user='postgres')
@@ -767,8 +774,9 @@ def authoring_setup(https=''):
         #sudo('$DEPLOY_DIR/cnx-authoring/python3/bin/python3 setup.py develop')
 
     with cd('cnx-authoring'):
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            sudo('./bin/python setup.py install')
+            sudo('./bin/pip install -e .')
         sudo('python setup.py install')
         sudo('pip install -e .')
         sudo('git clean -f -x -d build dist *.egg-info')
@@ -796,7 +804,8 @@ def authoring_test(test_case=''):
     """Run cnx-authoring tests
     """
     if not _postgres_user_exists('cnxauthoring'):
-        sudo('psql -d postgres -c "CREATE USER cnxauthoring WITH SUPERUSER PASSWORD \'cnxauthoring\'"', user='postgres')
+        sudo('psql -d template1 -c "CREATE USER cnxauthoring WITH SUPERUSER PASSWORD \'cnxauthoring\'"', user='postgres')
+
     if _postgres_db_exists('authoring-test'):
         sudo('dropdb authoring-test', user='postgres')
     sudo('createdb -O cnxauthoring authoring-test', user='postgres')
@@ -882,8 +891,7 @@ def publishing_test(test_case=''):
     """Run cnx-publishing tests
     """
     if not _postgres_user_exists('cnxarchive'):
-        sudo('psql -d postgres -c "CREATE USER cnxarchive WITH SUPERUSER PASSWORD \'cnxarchive\'"', user='postgres')
-
+        sudo('psql -d template1 -c "CREATE USER cnxarchive WITH SUPERUSER PASSWORD \'cnxarchive\'"', user='postgres') 
     if _postgres_db_exists('cnxarchive-testing'):
         sudo('dropdb cnxarchive-testing', user='postgres')
     sudo('createdb -O cnxarchive cnxarchive-testing', user='postgres')
@@ -907,7 +915,7 @@ def _install_pybit_dependencies():
     _install_postgresql()
     sudo('apt-get install -y rabbitmq-server')
     if not _postgres_user_exists('pybit'):
-        sudo('psql -d postgres -c "CREATE USER pybit WITH SUPERUSER PASSWORD \'pybit\';"', user='postgres')
+        sudo('psql -d template1 -c "CREATE USER pybit WITH SUPERUSER PASSWORD \'pybit\';"', user='postgres')
     if _postgres_db_exists('pybit'):
         sudo('dropdb pybit', user='postgres')
     sudo('createdb -O pybit pybit', user='postgres')
@@ -930,27 +938,30 @@ def acmeio_setup():
         sudo('git clone git@github.com:Connexions/acmeio.git')
     with cd('acmeio'):
         sudo('psql pybit -c \'\\i sql_additions.sql\'', user='postgres')
-        _setup_virtualenv()
-        sudo('./bin/pip install -e ../pybit')
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            _setup_virtualenv()
+            sudo('./bin/pip install -e ../pybit')
+            sudo('./bin/python setup.py install')
+            sudo('./bin/pip install -e .')
 
 def acmeio_test(test_case=''):
     """Run acmeio tests"""
     if test_case:
         test_case = '-s %s' % test_case
     with cd('acmeio'):
-        sudo('./bin/pip install -e .')
-        sudo('./bin/pserve production.ini start')
-        time.sleep(5)
-        sudo('./bin/python setup.py test %s' % test_case, warn_only=True)
-        sudo('./bin/pserve production.ini stop')
+        if VIRTUAL_ENV:
+            sudo('./bin/pip install -e .')
+            sudo('./bin/pserve production.ini start')
+            time.sleep(5)
+            sudo('./bin/python setup.py test %s' % test_case, warn_only=True)
+            sudo('./bin/pserve production.ini stop')
 
 def acmeio_sudo():
     """Run acmeio"""
     with cd('acmeio'):
-        sudo('./bin/pip install -e .')
-        sudo('./bin/pserve production.ini')
+        if VIRTUAL_ENV:
+            sudo('./bin/pip install -e .')
+            sudo('./bin/pserve production.ini')
 
 def buildout_setup():
     """Set up cnx-buildout"""
@@ -970,11 +981,12 @@ def roadsudoners_setup():
     if not fabric.contrib.files.exists('roadsudoners'):
         sudo('git clone git@github.com:Connexions/roadsudoners.git')
     with cd('roadsudoners'):
-        _setup_virtualenv()
-        sudo('./bin/pip install -e ../pybit')
-        sudo('./bin/pip install -e ../coyote')
-        sudo('./bin/pip install Pillow')
-        sudo('./bin/pip install -e ../Products.RhaptosPrint')
+        if VIRTUAL_ENV:
+            _setup_virtualenv()
+            sudo('./bin/pip install -e ../pybit')
+            sudo('./bin/pip install -e ../coyote')
+            sudo('./bin/pip install Pillow')
+            sudo('./bin/pip install -e ../Products.RhaptosPrint')
         pwd = sudo('pwd')
         fabric.contrib.files.sed('test.ini', 'output-dir = .*',
                                  'output-dir = {}'.format(pwd))
@@ -997,14 +1009,16 @@ def roadsudoners_setup():
         fabric.contrib.files.sed(
                 'test.ini', '^pdf-generator = .*',
                 'pdf-generator = {}'.format(sudo('which prince')))
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            sudo('./bin/python setup.py install')
+            sudo('./bin/pip install -e .')
 
 def roadsudoners_test():
     """Run roadsudoners tests"""
     with cd('roadsudoners'):
-        sudo('./bin/pip install -e .')
-        sudo('./bin/python setup.py test')
+        if VIRTUAL_ENV:
+            sudo('./bin/pip install -e .')
+            sudo('./bin/python setup.py test')
 
 def coyote_setup():
     """Set up coyote"""
@@ -1013,10 +1027,11 @@ def coyote_setup():
     if not fabric.contrib.files.exists('coyote'):
         sudo('git clone git@github.com:Connexions/coyote.git')
     with cd('coyote'):
-        _setup_virtualenv()
-        sudo('./bin/pip install -e ../pybit')
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            _setup_virtualenv()
+            sudo('./bin/pip install -e ../pybit')
+            sudo('./bin/python setup.py install')
+            sudo('./bin/pip install -e .')
 
 def rhaptosprint_setup():
     """Set up Products.RhaptosPrint"""
@@ -1025,11 +1040,12 @@ def rhaptosprint_setup():
         sudo('git clone git@github.com:Rhaptos/Products.RhaptosPrint.git')
     sudo('apt-get install --yes texlive-full')
     with cd('Products.RhaptosPrint'):
-        _setup_virtualenv()
         sudo('apt-get install --yes libjpeg62-dev')
-        sudo('./bin/pip install Pillow')
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            _setup_virtualenv()
+            sudo('./bin/pip install Pillow')
+            sudo('./bin/python setup.py install')
+            sudo('./bin/pip install -e .')
 
 def coyote_setup():
     """Set up coyote"""
@@ -1038,17 +1054,19 @@ def coyote_setup():
         sudo('git clone git@github.com:Connexions/coyote.git')
     _install_pybit_dependencies()
     with cd('coyote'):
-        _setup_virtualenv()
-        sudo('./bin/pip install -e ../pybit')
-        sudo('./bin/pip install -e ../acmeio')
-        sudo('./bin/python setup.py install')
-        sudo('./bin/pip install -e .')
+        if VIRTUAL_ENV:
+            _setup_virtualenv()
+            sudo('./bin/pip install -e ../pybit')
+            sudo('./bin/pip install -e ../acmeio')
+            sudo('./bin/python setup.py install')
+            sudo('./bin/pip install -e .')
 
 def coyote_test():
     """Run coyote tests"""
     with cd('coyote'):
-        sudo('./bin/pip install -e .')
-        sudo('./bin/python setup.py test')
+        if VIRTUAL_ENV:
+            sudo('./bin/pip install -e .')
+            sudo('./bin/python setup.py test')
 
 def test():
     """A test task to see whether paramiko is broken
